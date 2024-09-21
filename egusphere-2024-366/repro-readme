@@ -1,0 +1,25 @@
+The python code repro-python-code reproduces the 1st fig in egusphere-2024-366.
+
+Before running, please do the following:
+
+1.  Get the tar ball; all options may take a bit of time to start...
+    The tar ball is about 320 GB.
+    Try:
+    - on a nersc machine:
+        hsi get /home/m/mahf708/www/casv2/rEn0aDcDpDk0d1s1wDtDo2.tar
+    - if you have a globus account,
+        you can get the tar ball to another computer directly
+    - try download from the link
+        (https://portal.nersc.gov/archive/home/m/mahf708/www/casv2/rEn0aDcDpDk0d1s1wDtDo2.tar)
+
+2.  Untar the archive:
+    mkdir rEn0aDcDpDk0d1s1wDtDo2 && tar -xvf rEn0aDcDpDk0d1s1wDtDo2.tar -C rEn0aDcDpDk0d1s1wDtDo2
+
+3.  Prep a python env with the following packages:
+    dask, dask-jobqueue, matplotlib, numpy, pandas, xarray, netcdf4.
+    I used the packages documented in repro-conda-env-pkgs and repro-conda-env-pkgs-explicit.
+
+4.  Make edits to the repro-python-code file (location, etc.)
+
+4.  Run the repro-python-code file inside the prepared env
+    (it takes ~5 mins on an AMD EPYC 7702 64-Core Processor)

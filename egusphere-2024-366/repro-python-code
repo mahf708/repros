@@ -1,0 +1,198 @@
+#!/usr/bin/env python
+"""
+    Reproduce first fig in egusphere-2024-366
+"""
+
+import os
+
+import numpy as np
+import pandas as pd
+import xarray as xr
+
+from matplotlib import pyplot as plt
+from dask.distributed import Client
+from dask_jobqueue import SLURMCluster
+
+# set your own base path!
+BASE_PATH = "${HOME}"
+
+exps_list = [
+    "rEn0aDcDpDk0d1s1wDtDo2",
+]
+
+clusters = {}
+clients = {}
+for this_exp in exps_list:
+
+    clusters[this_exp] = SLURMCluster(
+        cores=128,
+        processes=32,
+        memory="256GB",
+        account="e3sm",
+        walltime="00:30:00",
+        queue="compute",
+        job_extra_directives=[f"-J {this_exp}"],
+    )
+
+    clusters[this_exp].scale(jobs=1)
+    clients[this_exp] = Client(clusters[this_exp])
+
+
+def _func(subj):
+    """ Do the log--log regression
+    """
+    if subj.ncolc.size < 5:
+        slope = np.nan
+        resids = np.nan
+        avgcdn = (subj.cdnc / subj.lcc).mean()
+        avglwp = (subj.lwp / subj.lcc).mean()
+        avgalb = np.nan
+        avglat = subj.lat.mean()
+        avglon = subj.lon.mean()
+        ncol = subj.ncolc.mean()
+    else:
+        avgalb = (
+            (
+                (subj.FSUTOA - (1-subj.lcc)*subj.FSUTOAC) / subj.lcc
+            ) / subj.SOLIN
+        ).mean()
+        logalb = np.log(
+            (
+                (subj.FSUTOA - (1-subj.lcc)*subj.FSUTOAC) / subj.lcc
+            ) / subj.SOLIN
+        )
+        logcdn = np.log(subj.cdnc / subj.lcc)
+
+        A = np.array([np.ones_like(logcdn), logcdn]).T
+        AN = np.dot(np.linalg.inv(A.T@A), A.T@logalb)
+        slope = AN[-1]
+        resids = ((A@AN - logalb)**2).sum()
+        avgcdn = (subj.cdnc / subj.lcc).mean()
+        avglwp = (subj.lwp / subj.lcc).mean()
+        ncol = subj.ncolc.mean()
+        avglat = subj.lat.mean()
+        avglon = subj.lon.mean()
+    return pd.Series(
+        [slope, resids, avgcdn, avglwp, avgalb, ncol, avglon, avglat],
+        index=[
+            "slope", "resids", "avgcdn", "avglwp", "avgalb", "ncol", "avglon", "avglat"
+        ]
+    )
+
+
+data_dict = {}
+vars_of_interest = [
+    'lat', 'lon',
+    'cdnc',
+    'clt', 'lcc', 'lwp', 'icc',
+    'ttop',
+    'SOLIN',
+    'FSUTOAC', 'FSUTOA',
+    'FREQZM',
+]
+
+ncol2 = pd.read_json(f'{BASE_PATH}/repro-map-ne120pg2-to-ne30pg2.json')
+
+
+def do_stuff(exp):
+    """ Read the data and give it to _func
+    """
+    ds = xr.open_mfdataset(
+        f"{BASE_PATH}/{exp}/hist/*.eam.h1.*.nc",
+    ).sel(time="2011")
+    mds = ds[vars_of_interest]
+    mdf = ncol2
+    mds_new = mds.assign_coords(
+        {"ncolc": (["ncol"], mdf["ncol.coarse"].values - 1)}
+    )
+    mds_new = mds_new.assign_coords(
+        {"ncolf": (["ncol"], mdf["ncol"].values - 1)}
+    )
+    mds_new = mds_new.swap_dims({"ncol": "ncolc"})
+    ds = mds_new
+    ds_time = ds.indexes['time'].to_datetimeindex()
+    ds['time'] = ds_time
+    df = ds.unify_chunks().to_dask_dataframe()
+    query_deets = {
+        'min_ins': 575,
+        'min_top': 273,
+        'min_lcc': 0.8,
+        'max_icc': 0.2,
+        'con_frq': 1.0,
+    }
+    df_mod = df[
+        (df['SOLIN'] >= query_deets['min_ins']) &
+        (df['ttop'] >= query_deets['min_top']) &
+        (df['lcc'] >= query_deets['min_lcc']) &
+        (df['icc'] <= query_deets['max_icc']) &
+        (df['FREQZM'] < query_deets['con_frq'])
+    ]
+
+    df_res = df_mod.groupby(['time', 'ncolc']).apply(
+        _func, meta={
+            'slope': 'f8',
+            'resids': 'f8',
+            'avgcdn': 'f8',
+            'avglwp': 'f8',
+            'avgalb': 'f8',
+            'ncol': 'f8',
+            'avglon': 'f8',
+            'avglat': 'f8'
+        }
+    )
+    df_res_now = df_res.compute()
+    df_res_now.to_parquet(f"{BASE_PATH}/{exp}.parq")
+
+
+submit = {}
+for this_exp in exps_list:
+    submit[this_exp] = clients[this_exp].submit(do_stuff, this_exp)
+
+for this_exp in exps_list:
+    submit[this_exp].result()
+
+    df = pd.read_parquet(f"{BASE_PATH}/{this_exp}.parq")
+
+    nep_df = df.copy()
+    nep_df = nep_df.loc[nep_df.avglat > 15]
+    nep_df = nep_df.loc[nep_df.avglat < 35]
+    nep_df = nep_df.loc[nep_df.avglon > -140+360]
+    nep_df = nep_df.loc[nep_df.avglon < -120+360]
+
+    plt.rcParams.update({'font.size': 14.5})
+    fig, (ax2) = plt.subplots(nrows=1, ncols=1, figsize=(4.5, 4), sharey=True)
+    ceil_limit = 15
+    nep_df['cdnc_ceil'] = ((nep_df.avgcdn/(1e6)) /
+                           ceil_limit).apply(np.ceil)*ceil_limit
+    nep_df['lwp_ceil'] = ((nep_df.avglwp*1e3) /
+                          ceil_limit).apply(np.ceil)*ceil_limit
+    nep_df['Cloud albedo susceptibility'] = nep_df.slope
+    nep_df_res = nep_df.groupby(['cdnc_ceil', 'lwp_ceil']).mean().reset_index()
+    nep_df_count = nep_df.groupby(
+        ['cdnc_ceil', 'lwp_ceil']).count().reset_index()
+    count_scale = 5000
+    myplt = ax2.scatter(
+        x=nep_df_res['cdnc_ceil'],
+        y=nep_df_res['lwp_ceil'],
+        c=nep_df_res['Cloud albedo susceptibility'],
+        cmap="BrBG", vmin=-0.6, vmax=0.6,
+        s=count_scale*nep_df_count.slope.values /
+        nep_df_count.slope.values.sum(),
+    )
+    ax2.set_ylabel("In-cloud LWP, g m$^{-2}$")
+    ax2.set_xlabel("In-cloud-top CDNC, cm$^{-3}$")
+    ax2.set_xlim(0, 300)
+    ax2.set_ylim(0, 300)
+    ax2.set_xticks([0, 50, 100, 150, 200, 250, 300], minor=False)
+    ax2.set_box_aspect(1)
+    cbar_ax = fig.add_axes([0.92, 0.20, 0.025, 0.60])
+    mappable = ax2.collections[0]
+    cb = fig.colorbar(mappable=mappable, cax=cbar_ax, shrink=0.50,
+                      label="Cloud albedo susceptibility")
+    cb.set_ticks([-.6, -.4, -.2, 0.0, 0.2, 0.4, 0.6])
+    fig.savefig(f'{BASE_PATH}/repro-{this_exp}.png', dpi=450, bbox_inches='tight')
+    myplt.legend_elements("sizes", num=4, alpha=0.40)
+
+
+    clients[this_exp].shutdown()
+    os.rmdir(f"{BASE_PATH}/{this_exp}.parq")
