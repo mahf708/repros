@@ -1,0 +1,203 @@
+name: cime testing
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - 'CIME/**'
+      - 'scripts/**'
+      - 'tools/**'
+      - 'utils/**'
+      - 'docker/**'
+
+  pull_request:
+    branches:
+      - master
+    paths:
+      - 'CIME/**'
+      - 'scripts/**'
+      - 'tools/**'
+      - 'utils/**'
+      - 'docker/**'
+
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read # to fetch code (actions/checkout)
+  packages: read
+
+jobs:
+  build-containers:
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      - name: Login to DockerHub
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v4
+        with:
+          images: ghcr.io/ESMCI/cime
+          tags: |
+            type=raw,value=latest,enable=${{ github.event_name == 'push' }}
+            type=sha,format=long
+      - name: Build and push
+        uses: docker/build-push-action@v3
+        with:
+          target: base
+          context: docker/
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  pre-commit:
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'pull_request' && ! cancelled() }}
+    timeout-minutes: 2
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Set up python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
+      - name: Runs pre-commit
+        run: |
+          pip install pre-commit
+
+          pre-commit run -a
+
+  # Runs unit testing under different python versions.
+  unit-testing:
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'pull_request' && always() && ! cancelled() }}
+    needs: build-containers
+    container:
+      image: ghcr.io/esmci/cime:sha-${{ github.sha }}
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    strategy:
+      matrix:
+        python-version: ['3.8', '3.9', '3.10']
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Run tests
+        shell: bash
+        env:
+          CIME_MODEL: "cesm"
+          CIME_DRIVER: "nuopc"
+          CIME_TEST_PLATFORM: ubuntu-latest
+        run: |
+          export SRC_PATH="${GITHUB_WORKSPACE}"
+
+          mamba install -y python=${{ matrix.python-version }}
+
+          source /entrypoint.sh
+
+          # GitHub runner home is different than container
+          cp -rf /root/.cime /github/home/
+
+          git status
+
+          pytest -vvv --cov=CIME --machine docker --no-fortran-run CIME/tests/test_unit*
+
+  # Run system tests
+  system-testing:
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'pull_request' && always() && ! cancelled() }}
+    needs: build-containers
+    container:
+      image: ghcr.io/esmci/cime:sha-${{ github.sha }}
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+      options: --hostname docker
+    strategy:
+      # allow all jobs to finish
+      fail-fast: false
+      matrix:
+        model: ["e3sm", "cesm"]
+        driver: ["mct", "nuopc"]
+        exclude:
+          # exclude nuopc driver when running e3sm tests
+          - model: "e3sm"
+            driver: "nuopc"
+          # exclude mct driver when running cesm tests
+          - model: "cesm"
+            driver: "mct"
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Cache inputdata
+        uses: actions/cache@v2
+        with:
+          path: /storage/inputdata
+          key: inputdata-2
+      - name: Run tests
+        shell: bash
+        env:
+          CIME_MODEL: ${{ matrix.model }}
+          CIME_DRIVER: ${{ matrix.driver }}
+          CIME_TEST_PLATFORM: ubuntu-latest
+        run: |
+          export SRC_PATH="${GITHUB_WORKSPACE}"
+
+          source /entrypoint.sh
+
+          # GitHub runner home is different than container
+          cp -rf /root/.cime /github/home/
+
+          if [[ "${CIME_MODEL}" == "e3sm" ]]; then
+            git remote set-url origin https://github.com/${{ github.event.pull_request.head.repo.full_name || github.repository }}
+            git remote set-branches origin "*"
+            git fetch origin
+            git checkout ${GITHUB_HEAD_REF:-${GITHUB_REF##*/}}
+
+            # sync correct submodules
+            git submodule update
+
+            source /opt/conda/etc/profile.d/conda.sh
+
+            conda activate base
+          fi
+
+          git status
+
+          pytest -vvv --cov=CIME --machine docker --no-fortran-run --no-teardown CIME/tests/test_sys*
+      - uses: mxschmitt/action-tmate@v3
+        if: ${{ !always() }}
+        with:
+          limit-access-to-actor: true
+      - name: Create testing log archive
+        if: ${{ failure() }}
+        shell: bash
+        run: tar -czvf /testing-logs-${GITHUB_RUN_NUMBER}-${{ matrix.model }}-${{ matrix.driver }}.tar.gz /storage/cases/
+        # How to download artifacts:
+        # https://docs.github.com/en/actions/managing-workflow-runs/downloading-workflow-artifacts
+      - name: Upload testing logs
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v3
+        with:
+          name: testing-logs-${{ github.run_number }}-${{ matrix.model }}-${{ matrix.driver }}
+          path: /testing-logs-${{ github.run_number}}-${{ matrix.model }}-${{ matrix.driver }}.tar.gz
+          retention-days: 4

@@ -1,0 +1,96 @@
+#!/usr/bin/env python
+
+import glob
+import numpy as np
+import xarray as xr
+from matplotlib import pyplot as plt
+import seaborn as sns
+import pandas as pd
+from datetime import timedelta
+
+all_files = glob.glob("/lcrc/group/e3sm/ac.ngmahfouz/E3SMv3/v3.LR.tests/tests/S_12x1_nmonths-mincdnc0/run/v3.LR.tests.eam.h1.*.nc")
+
+og_samples = 75
+random_vector = np.random.randint(1, len(all_files), size=og_samples).tolist()
+
+files = [all_files[i] for i in random_vector]
+
+drop_vars = [
+    "AODVIS",
+    "CCN1", "CCN2", "CCN3", "CCN4", "CCN5", "CCN6",
+    "CCN1MAIR", "CCN2MAIR", "CCN4MAIR", "CCN5MAIR", "CCN6MAIR",
+    "ICWNC", "NDROPCOL", "NDROPMIX", "NDROPSNK", "NDROPSRC", "NDROPTND",
+    "P3_nc_nuceat_tend", "angstrm", "aod400", "aod700", 
+]
+vars_of_interest = [
+    "CLOUDFRAC_LIQ_MICRO", 
+    "CCN3MAIR",
+    "NUMLIQ",
+    "ICWNC",
+    "cdnc",
+    "lcc",
+    "aerindex",   
+]
+
+ds = xr.open_mfdataset(files, combine="by_coords")
+
+ds = ds[vars_of_interest]
+ds_time = ds["time"] + timedelta(days=2000*365)
+ds["time"] = ds_time
+ds_time = ds.indexes['time'].to_datetimeindex()
+ds['time'] = ds_time
+ds.compute()
+df = ds.unify_chunks().to_dataframe()
+
+df['Cloud fraction'] = np.ceil(5*df["CLOUDFRAC_LIQ_MICRO"])/5
+df["grid-mean ccn at S=0.10% (1/kg)"] = df["CCN3MAIR"]
+df["grid-mean nc (1/kg)"] = df["NUMLIQ"]
+df["in-cloud nc (1/kg)"] = df["NUMLIQ"]/df["CLOUDFRAC_LIQ_MICRO"]
+df["grid-mean nc (1/m3)"] = df["ICWNC"]/1e6
+df["in-cloud nc (1/m3)"] = df["ICWNC"]/df["CLOUDFRAC_LIQ_MICRO"]/1e6
+df["in-cloud-top nc (1/cc)"] = df["cdnc"]/df["lcc"]/1e6
+df["cloud-top cf"] = df["lcc"]
+df["aerosol index"] = df["aerindex"]
+
+df['psuedo x'] = df["grid-mean ccn at S=0.10% (1/kg)"] * df["Cloud fraction"]
+df['psuedo y'] = df["grid-mean nc (1/kg)"]
+
+test_nc = df.loc[df["psuedo y"] >= 1e-5]
+test_nc1 = test_nc.loc[test_nc["psuedo y"] >= 1e6]
+gb, gb1 = pd.DataFrame(), pd.DataFrame()
+
+# gb["clustered x"] = np.ceil(test_nc["psuedo x"].values/1e7)*1e7
+digi_samples = 150
+digi = np.digitize(test_nc["psuedo x"].values, bins=np.logspace(4,10,digi_samples))
+print(digi.shape)
+digi1 = np.digitize(test_nc1["psuedo x"].values, bins=np.logspace(4,10,digi_samples))
+gb["clustered x"] = np.logspace(4,10,digi_samples)[digi]
+print(gb["clustered x"].shape)
+gb1["clustered x"] = np.logspace(4,10,digi_samples)[digi1]
+gb["clustered y"] = test_nc["psuedo y"].values
+gb1["clustered y"] = test_nc1["psuedo y"].values
+
+test = gb.groupby("clustered x").mean()
+test["Count"] = gb.groupby("clustered x").count()
+test1 = gb1.groupby("clustered x").mean()
+test1["Count"] = gb1.groupby("clustered x").count()
+
+# merge test and test1, labeling their values accordingly
+test["Filter"] = R"$N_\text{c} \geq 10^{-5} \, \text{kg}^{-1}$"
+test1["Filter"] = R"$N_\text{c} \geq 10^{6} \, \text{kg}^{-1}$"
+big_test = pd.concat([test, test1])
+
+sns.scatterplot(x="clustered x", y="clustered y", data=big_test, hue="Filter", size="Count", sizes=(20, 200), alpha=0.95, palette="pastel")
+plt.yscale("log")
+plt.xscale("log")
+x=np.logspace(5, 10, digi_samples)
+# 2000 exp (0.55 ln (𝑁cnn × 𝐶f)) 
+plt.plot(x, 2000*np.exp(0.55*np.log(x)), color="r", label=R"$N_\text{c} = 2000 \left(N_\text{ccn} C_\text{f}\right)^{0.55}$")
+plt.plot(x, 1.00*np.exp(1.00*np.log(x)), color="k", label=R"$N_\text{c} = N_\text{ccn} C_\text{f}$")
+plt.xlim(1e5,1e10)
+plt.ylim(1e5,1e10)
+plt.xlabel(R"$N_\text{ccn} C_\text{f}\;$ (kg$^{-1}$)")
+plt.ylabel(R"$N_\text{c}\;$ (kg$^{-1}$)")
+plt.legend(loc="upper left", fontsize=9)
+plt.savefig(f"clustered-ccn-v-nc-1e6_with-low-mincdnc0_{og_samples}.png", bbox_inches="tight", dpi=300)
+

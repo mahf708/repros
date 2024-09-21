@@ -1,0 +1,17 @@
+We additionally provide a Zenodo archival repository with the following:
+
+(1) the SCREAM v1 code;
+(2) the default E3SM v3 code for E3SM-MAM runs;
+(3) the modified E3SM v3 code for E3SM-SPA runs;
+(4) the code to reproduce the plots in the manuscripts;
+(5) instructions to reproduce the runs in the manuscript;
+(6) instructions to retrieve the data files from runs.
+
+The the following subfolders correspond to the items above, in order:
+
+01_scream-v1_code
+02_e3sm-mam_code
+03_e3sm-spa_code
+04_plots
+05_runs
+06_archive

@@ -1,0 +1,50 @@
+HPSS is a long-term archive system. Learn more about it here.
+https://docs.nersc.gov/filesystems/archive/.
+
+Under the following path, we stored the experiments listed below.
+Public link: https://portal.nersc.gov/archive/home/m/mahf708/www/eamxx-erfaer/
+System path: /home/m/mahf708/www/eamxx-erfaer/
+
+Note that you may have to unzip some of the folders before using.
+Your best bet is to reach out to authors in need of help.
+
+Simulations:
+------------
+v3.LR.F2010
+v3.LR.F2010.PI
+pd.eam3.29bdb81.nudg.256
+pi.eam3.29bdb81.nudg.256
+pd.eam3.29bdb81.nudg.1024
+pi.eam3.29bdb81.nudg.1024
+v3.LR.F2010.sens.base.minCDNC00.PD.tar
+v3.LR.F2010.sens.base.minCDNC00.PI.tar
+v3.LR.F2010.sens.base.minCDNC20.PD.tar
+v3.LR.F2010.sens.base.minCDNC20.PI.tar
+v3.LR.F2010-SPA.sens.base.minCDNC00.PD.tar
+v3.LR.F2010-SPA.sens.base.minCDNC00.PI.tar
+v3.LR.F2010-SPA.sens.sp50.minCDNC00.PD.tar
+v3.LR.F2010-SPA.sens.sp50.minCDNC00.PI.tar
+v3.LR.F2010-SPA.sens.sp55.minCDNC20.PD.tar
+v3.LR.F2010-SPA.sens.sp55.minCDNC20.PI.tar
+v3.LR.F2010-SPA.sens.sp60.minCDNC00.PD.tar
+v3.LR.F2010-SPA.sens.sp60.minCDNC00.PI.tar
+v3.LR.F2010-SPA.sens.sp80.minCDNC00.PD.tar
+v3.LR.F2010-SPA.sens.sp80.minCDNC00.PI.tar
+
+Simulation pairs for table 1 (in order):
+----------------------------------------
+v3.LR.F2010, v3.LR.F2010.PI
+pd.eam3.29bdb81.nudg.256, pi.eam3.29bdb81.nudg.256
+pd.eam3.29bdb81.nudg.1024, pi.eam3.29bdb81.nudg.1024
+v3.LR.F2010.sens.base.minCDNC20.PD, v3.LR.F2010.sens.base.minCDNC20.PI
+v3.LR.F2010.sens.base.minCDNC00.PD, v3.LR.F2010.sens.base.minCDNC00.PI
+v3.LR.F2010-SPA.sens.sp55.minCDNC20.PD, v3.LR.F2010-SPA.sens.sp55.minCDNC20.PI
+v3.LR.F2010-SPA.sens.base.minCDNC00.PD, v3.LR.F2010-SPA.sens.base.minCDNC00.PI
+
+Simulation pairs for table 3 (in order):
+----------------------------------------
+v3.LR.F2010-SPA.sens.sp50.minCDNC00.PD, v3.LR.F2010-SPA.sens.sp50.minCDNC00.PI
+v3.LR.F2010-SPA.sens.sp55.minCDNC20.PD, v3.LR.F2010-SPA.sens.sp55.minCDNC20.PI
+v3.LR.F2010-SPA.sens.sp60.minCDNC00.PD, v3.LR.F2010-SPA.sens.sp60.minCDNC00.PI
+v3.LR.F2010-SPA.sens.sp80.minCDNC00.PD, v3.LR.F2010-SPA.sens.sp80.minCDNC00.PI
+v3.LR.F2010-SPA.sens.base.minCDNC00.PD, v3.LR.F2010-SPA.sens.base.minCDNC00.PI

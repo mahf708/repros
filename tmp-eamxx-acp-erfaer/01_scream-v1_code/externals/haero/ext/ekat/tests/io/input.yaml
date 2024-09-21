@@ -1,0 +1,17 @@
+%YAML 1.1
+---
+ints_as_strings: !strings [1,2]
+empty_as_doubles: !floats []
+Constants:
+  One Double: 9.8
+  Three Doubles: [1.024e3, .1 , -1.0E-2]
+  Two Logicals: [TRUE, false]
+  One String: multiple words string
+  Nested Sublist:
+    The Answer: 42
+Options:
+  My Bool: !!bool "false"
+  My Int: -2
+  My String: "blah"
+  My Real: -1.0
+...

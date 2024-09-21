@@ -1,0 +1,142 @@
+#!/usr/bin/env python
+
+import xarray as xr
+from cartopy import crs as ccrs
+from matplotlib import pyplot as plt
+
+screamv1_base_path = "/global/cfs/cdirs/e3smdata/simulations/eamxxerfaer"
+eamv3_base_path = "/global/cfs/cdirs/e3sm/mahf708/E3SMv3"
+
+exps_labs = {
+    "SCREAM v1 3 km PD": "pd.eam3.29bdb81.nudg.1024",
+    "SCREAM v1 3 km PI": "pi.eam3.29bdb81.nudg.1024",
+    "SCREAM v1 12 km PD": "pd.eam3.29bdb81.nudg.256",
+    "SCREAM v1 12 km PI": "pi.eam3.29bdb81.nudg.256",
+    "E3SM v3 100 km PD": "v3.LR.F2010",
+    "E3SM v3 100 km PI": "v3.LR.F2010.PI",
+}
+
+exps = {}
+for key, val in exps_labs.items():
+    base_path = screamv1_base_path if "SCREAM" in key else eamv3_base_path
+    aux_path = "1ma_ne30pg2.AVERAGE.*.nc" if "SCREAM" in key else "/archive/atm/hist/*_??_*.nc"
+    exps[key] = xr.open_mfdataset(f"{base_path}/{val}/{aux_path}")
+
+new_time_index = [5, 6, 7, 8, 9, 10, 11, 12, 1, 2, 3, 4]
+
+new_month = ["Jan", "Feb", "Mar", "Apr", "May",
+             "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+month_weight_pre = (
+    exps["E3SM v3 100 km PD"].time.dt.days_in_month /
+    exps["E3SM v3 100 km PD"].time.dt.days_in_month.sum()
+)
+
+erf_list = [
+    "E3SM v3 100 km",
+    "SCREAM v1 12 km",
+    "SCREAM v1 3 km",
+]
+for erf in erf_list:
+    val_pd = exps[f"{erf} PD"]
+    val_pi = exps[f"{erf} PI"]
+    month_weight = month_weight_pre.copy()
+    if "SCREAM" in erf:
+        month_weight["time"] = val_pd.time[new_time_index]
+    else:
+        month_weight["time"] = val_pd.time
+    if "SCREAM" in erf:
+        erf_val = ((
+            (val_pd.SW_flux_dn_at_model_top - val_pd.SW_flux_up_at_model_top) +
+            (val_pd.LW_flux_dn_at_model_top - val_pd.LW_flux_up_at_model_top)
+        ) - (
+            (val_pi.SW_flux_dn_at_model_top - val_pi.SW_flux_up_at_model_top) +
+            (val_pi.LW_flux_dn_at_model_top - val_pi.LW_flux_up_at_model_top)
+        ))[new_time_index].weighted(val_pd.isel(time=0).area).mean("ncol")
+        _label = f"{erf_val.weighted(month_weight).mean().values:.2f} {erf}"
+        _style = "-"
+    else:
+        erf_val = (
+            (val_pd.FSNT-val_pd.FLNT) -
+            (val_pi.FSNT-val_pi.FLNT)
+        ).weighted(val_pd.isel(time=0).area).mean("ncol")
+        _label = f"{erf_val.weighted(month_weight).mean().values:.2f} Reference 100 km"
+        _style = ":"
+    plt.plot(
+        new_month,
+        erf_val.values,
+        label=_label, linestyle=_style)
+
+plt.xlabel("Month")
+plt.ylabel("ERFaer (W m$^{-2}$)")
+plt.ylim(-3.4, 0.4)
+plt.legend()
+
+plt.savefig("fig1-ts.png", dpi=300, bbox_inches="tight")
+plt.close()
+
+
+def fix_lon(x):
+    return (x + 180) % 360 - 180
+
+
+# for exp, lab in zip(exps, ["Present-day", "Pre-industrial"]):
+figure, axs = plt.subplots(
+    len(erf_list), 1,
+    subplot_kw=dict(projection=ccrs.PlateCarree()),
+    figsize=(6, len(erf_list)*3.5)
+)
+
+# enumerate over expe
+for i, exp in enumerate(erf_list):
+    ax = axs[i]
+    val_pd = exps[f"{exp} PD"]
+    val_pi = exps[f"{exp} PI"]
+    month_weight = month_weight_pre.copy()
+    if "SCREAM" in exp:
+        month_weight["time"] = val_pd.time[new_time_index]
+    else:
+        month_weight["time"] = val_pd.time
+    if "SCREAM" in exp:
+        _exp = exp
+        erf_val = ((
+            (val_pd.SW_flux_dn_at_model_top - val_pd.SW_flux_up_at_model_top) +
+            (val_pd.LW_flux_dn_at_model_top - val_pd.LW_flux_up_at_model_top)
+        ) - (
+            (val_pi.SW_flux_dn_at_model_top - val_pi.SW_flux_up_at_model_top) +
+            (val_pi.LW_flux_dn_at_model_top - val_pi.LW_flux_up_at_model_top)
+        ))[new_time_index].weighted(month_weight).mean("time")
+    else:
+        _exp = "Reference 100 km"
+        erf_val = (
+            (val_pd.FSNT-val_pd.FLNT)-(val_pi.FSNT-val_pi.FLNT)
+        ).weighted(month_weight).mean("time")
+
+    ds = erf_val.values
+    ds0 = val_pi
+    pl = ax.tripcolor(
+        fix_lon(ds0.isel(time=0)["lon"]),
+        ds0.isel(time=0)["lat"],
+        ds,
+        # cmap for red blue
+        transform=ccrs.PlateCarree(), cmap="RdBu_r",
+        vmin=-10.5, vmax=10.5,
+        shading="gouraud"
+    )
+    ax.set_global()
+    ax.coastlines(color='black', resolution='50m', linewidth=0.5)
+    ax.set_title(
+        f"{erf_val.weighted(val_pd.isel(time=0).area).mean("ncol").values:.2f}",
+        loc="left",
+        fontsize=12
+    )
+    ax.set_title(
+        f"{_exp}",
+        loc="right",
+        fontsize=12
+    )
+cbar = figure.colorbar(
+    pl, ax=axs, orientation='horizontal', fraction=0.030, pad=0.03
+)
+cbar.set_label(r"ERFaer (W m$^{-2}$)")
+plt.savefig("fig1-maps.png", bbox_inches='tight', dpi=300)
+plt.close()

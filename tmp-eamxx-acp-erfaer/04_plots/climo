@@ -1,0 +1,35 @@
+#!/bin/bash
+
+ncc=~/.micromamba/envs/xgns/bin/ncclimo
+
+cd /lcrc/group/e3sm/ac.ngmahfouz/E3SMv3/
+
+exps=(
+v3.LR.F2010.sens.base.minCDNC00.PD \
+v3.LR.F2010.sens.base.minCDNC00.PI \
+v3.LR.F2010.sens.base.minCDNC20.PD \
+v3.LR.F2010.sens.base.minCDNC20.PI \
+v3.LR.F2010-SPA.sens.base.minCDNC00.PD \
+v3.LR.F2010-SPA.sens.base.minCDNC00.PI \
+v3.LR.F2010-SPA.sens.sp50.minCDNC00.PD \
+v3.LR.F2010-SPA.sens.sp50.minCDNC00.PI \
+v3.LR.F2010-SPA.sens.sp55.minCDNC00.PD \
+v3.LR.F2010-SPA.sens.sp55.minCDNC00.PI \
+v3.LR.F2010-SPA.sens.sp60.minCDNC00.PD \
+v3.LR.F2010-SPA.sens.sp60.minCDNC00.PI \
+v3.LR.F2010-SPA.sens.sp80.minCDNC00.PD \
+v3.LR.F2010-SPA.sens.sp80.minCDNC00.PI \
+)
+
+# loop over all exps
+for exp in ${exps[@]}; do
+    echo $exp
+    cd /lcrc/group/e3sm/ac.ngmahfouz/E3SMv3/SPA
+    if [ $exp == "v3.LR.F2010.sens.base.minCDNC00.PD" || $exp == "v3.LR.F2010.sens.base.minCDNC00.PI" ]; then
+        aux=S_1x16_nmonths
+    else
+        aux=S_1x15_nmonths
+    fi
+    cd $exp/tests/$aux/run
+    ls *eam.h0.2010-*.nc | $ncc -c $exp -s 2010 -e 2010
+done

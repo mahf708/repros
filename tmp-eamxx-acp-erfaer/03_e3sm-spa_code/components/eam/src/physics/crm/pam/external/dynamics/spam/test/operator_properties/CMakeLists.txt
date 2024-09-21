@@ -1,0 +1,7 @@
+add_pamc_test(exterior_derivative_layer PAMC_LAYER)
+add_pamc_test(exterior_derivative_extruded PAMC_EXTRUDED)
+add_pamc_test(exterior_derivative_extruded_3d PAMC_EXTRUDED)
+
+add_pamc_test(laplacian_layer PAMC_LAYER)
+add_pamc_test(laplacian_extruded PAMC_EXTRUDED)
+add_pamc_test(laplacian_extruded_3d PAMC_EXTRUDED)
