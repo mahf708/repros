@@ -1,0 +1,129 @@
+#!/usr/bin/env python3
+
+"""
+List e3sm test suites. Can be used to show what's being tested. Can just
+list tested grids, compsets, etc.
+"""
+
+from standard_script_setup import *
+from CIME import utils
+from CIME import get_tests
+from CIME.XML.files import Files
+from CIME.XML.compsets import Compsets
+
+import argparse
+import logging
+
+
+logger = logging.getLogger(__name__)
+
+
+def parse_command_line():
+    description = """This tool will print all test suite names.
+
+If any test suite names are provided, then all `term` values for the tests in the suites will be listed.
+
+Examples
+--------
+>>> %(prog)s
+e3sm_developer
+cime_tiny
+
+>>> %(prog)s e3sm_developer
+ERS.f19_g16_rx1.A.docker_gnu
+NCK.f19_g16_rx1.A.docker_gnu
+
+>>> %(prog)s -t compsets e3sm_developer
+A
+F2010
+I1850ELM
+
+>>> %(prog)s -t grids e3sm_developer
+f19_g16_rx1"""
+
+    parser = argparse.ArgumentParser(
+        description=description, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+
+    parser.add_argument(
+        "suites",
+        nargs="*",
+        help="The test suites to list.",
+    )
+
+    parser.add_argument(
+        "-t",
+        "--term",
+        choices=("compsets", "grids", "testcases", "tests"),
+        default="tests",
+        help="Term of the test name to print.",
+    )
+
+    compsets_group = parser.add_argument_group("Compset options")
+
+    compsets_group.add_argument(
+        "-l", "--long", action="store_true", help="Prints the longname of compsets."
+    )
+
+    utils.setup_standard_logging_options(parser)
+
+    kwargs = vars(parser.parse_args())
+
+    utils.configure_logging(**kwargs)
+
+    return kwargs
+
+
+def list_tests(term, suites, long, **_):
+    values = [x for s in suites for x in get_tests.get_test_suite(s)]
+
+    if term != "tests":
+        terms = [utils.parse_test_name(x) for x in values]
+
+        index_map = {"compsets": 3, "grids": 2, "testcases": 0}
+
+        index = index_map[term]
+
+        values = set(x[index] for x in terms)
+
+        if long and term == "compsets":
+            compset_longnames = get_compset_longnames()
+
+            values = set(compset_longnames[x] for x in values)
+
+    print("\n".join(sorted(values)))
+
+    logger.info(f"Found {len(values)!r} {term}")
+
+
+def get_compset_longnames():
+    files = Files()
+
+    names = files.get_components("COMPSETS_SPEC_FILE")
+
+    values = {}
+
+    for n in names:
+        comp_file = files.get_value("COMPSETS_SPEC_FILE", attribute={"component": n})
+
+        values.update({x for x in Compsets(comp_file)})
+
+    return values
+
+
+def _main_func():
+    args = parse_command_line()
+
+    if len(args["suites"]) == 0:
+        test_suites = sorted(get_tests.get_test_suites())
+
+        for suite in test_suites:
+            print(suite)
+
+        logger.info(f"Found {len(test_suites)!r} test suites")
+    else:
+        list_tests(**args)
+
+
+if __name__ == "__main__":
+    _main_func()

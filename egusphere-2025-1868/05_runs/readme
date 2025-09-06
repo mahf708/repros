@@ -1,0 +1,22 @@
+The following are sample scripts for various runs in the manuscript.
+
+scream-v1_script is valid for the two resolutions of SCREAM v1 runs.
+e3sm-mam_script is valid for E3SM-MAM runs.
+e3sm-spa_script is valid for E3SM-SPA runs.
+
+Note that these scripts are simply samples, and will likely be
+out-of-date as machine configurations change.
+
+Get in touch with authors for more information on how to reproduce
+the runs in the future, if desired.
+
+You may need the SPA input files, which are stored in the following link.
+https://web.lcrc.anl.gov/public/e3sm/inputdata/atm/scream/init/.
+
+spa_from_eamv3.ne4np4.F2010.2011-2025.c_20240405.nc
+spa_from_eamv3.ne4pg2.F2010.2011-2025.c_20240405.nc
+spa_from_eamv3.ne30np4.F2010.2011-2025.c_20240405.nc
+spa_from_eamv3.ne30pg2.F2010.2011-2025.c_20240405.nc
+spa_from_eamv3.ne30pg2.F2010.2011-2040.c_20240405.nc
+spa_from_eamv3.ne30pg2.F2010.pi.2011-2025.c_20240405.nc
+spa_from_eamv3.ne30pg2.F2010.pi.2011-2040.c_20240405.nc

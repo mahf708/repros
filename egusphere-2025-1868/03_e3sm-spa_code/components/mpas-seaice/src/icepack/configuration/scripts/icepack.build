@@ -1,0 +1,150 @@
+#!/bin/csh -f
+
+#====================================
+# If the icepack binary is passed via the --exe argument and the file exists,
+# copy it into the run directory and don't build the model.
+
+set icepexe = "UnDEFineD"
+if ($#argv == 0) then
+  # continue, standard way to build
+else
+  if ("$1" == "--exe") then
+    if ($#argv > 2) then
+      echo "${0}: ERROR: --exe icepackexe without other arguments is required"
+      exit -99
+    endif
+    set icepexe = $2
+    echo "${0}: icepexe = ${icepexe}"
+    if (-e ${icepexe}) then
+
+      source ./icepack.settings
+      source ${ICE_CASEDIR}/env.${ICE_MACHCOMP} -nomodules || exit 2
+      if !(-d ${ICE_RUNDIR}) mkdir -p ${ICE_RUNDIR}
+      cp -p ${icepexe} ${ICE_RUNDIR}/icepack
+
+      echo "`date` ${0}:${ICE_CASENAME} build copied ${icepexe}"  >> ${ICE_CASEDIR}/README.case
+      if ( ${ICE_TEST} != ${ICE_SPVAL} ) then
+        echo "#---" >! ${ICE_CASEDIR}/test_output
+        echo "COPY ${ICE_TESTNAME} build" >> ${ICE_CASEDIR}/test_output
+        echo "PEND ${ICE_TESTNAME} run" >> ${ICE_CASEDIR}/test_output
+      endif
+
+      exit 0
+    endif
+  else
+    echo "${0}: ERROR: invalid arguments"
+    exit -99
+  endif
+endif
+
+#====================================
+
+source ./icepack.settings
+source ${ICE_CASEDIR}/env.${ICE_MACHCOMP} || exit 2
+
+if (${ICE_MACHINE} != ${ICE_MACHINE_MACHNAME}) then
+  echo "WARNING, is ICE_MACHINE setting OK, ${ICE_MACHINE}, ${ICE_MACHINE_MACHNAME}"
+endif
+if (${ICE_ENVNAME} != ${ICE_MACHINE_ENVNAME}) then
+  echo "WARNING, is ICE_ENVNAME setting OK, ${ICE_ENVNAME}, ${ICE_MACHINE_ENVNAME}"
+endif
+
+echo " "
+echo "${0}:"
+
+set  stamp   = `date '+%y%m%d-%H%M%S'`
+set ICE_BLDLOG_FILE = "icepack.bldlog.${stamp}"
+set quiet = ${ICE_QUIETMODE}
+
+if (${ICE_CLEANBUILD} == 'true') then
+  echo "cleaning objdir"
+  rm -r -f ${ICE_OBJDIR}
+endif
+if !(-d ${ICE_OBJDIR}) mkdir -p ${ICE_OBJDIR}
+cd ${ICE_OBJDIR}
+
+setenv ICE_CPPDEFS "${ICE_CPPDEFS} -DNXGLOB=${ICE_NXGLOB} -DNICELYR=${NICELYR} -DNSNWLYR=${NSNWLYR} -DNICECAT=${NICECAT} -DNFSDCAT=${NFSDCAT} -DTRAGE=${TRAGE} -DTRFY=${TRFY} -DTRLVL=${TRLVL} -DTRPND=${TRPND} -DTRSNOW=${TRSNOW} -DTRBRI=${TRBRI} -DNTRISO=${NTRISO} -DNTRAERO=${NTRAERO} -DNBGCLYR=${NBGCLYR} -DTRALG=${TRALG} -DTRBGCZ=${TRBGCZ} -DTRDOC=${TRDOC} -DTRDOC=${TRDOC} -DTRDIC=${TRDIC} -DTRDON=${TRDON} -DTRFED=${TRFED} -DTRFEP=${TRFEP} -DTRZAERO=${TRZAERO} -DTRBGCS=${TRBGCS} "
+
+if (${ICE_IOTYPE} == 'netcdf') then
+  setenv ICE_CPPDEFS "${ICE_CPPDEFS} -DUSE_NETCDF"
+endif
+if (${ICE_SNICARHC} == 'true') then
+  setenv ICE_CPPDEFS "${ICE_CPPDEFS} -DUSE_SNICARHC"
+endif
+
+### List of source code directories (in order of importance).
+cat >! Filepath << EOF
+${ICE_SANDBOX}/configuration/driver
+${ICE_SANDBOX}/columnphysics
+EOF
+
+echo " "
+echo ICE_GRID     = ${ICE_GRID}
+echo ICE_NXGLOB   = ${ICE_NXGLOB}
+echo "ICE_CPPDEFS = ${ICE_CPPDEFS}"
+echo "Filepath = "
+cat ${ICE_OBJDIR}/Filepath
+echo " "
+
+echo "building makdep"
+${ICE_MACHINE_MAKE} \
+        -f  ${ICE_CASEDIR}/Makefile MACFILE=${ICE_CASEDIR}/Macros.${ICE_MACHCOMP} makdep || exit 2
+
+echo "building icepack > ${ICE_OBJDIR}/${ICE_BLDLOG_FILE}"
+if ( ${ICE_TEST} != ${ICE_SPVAL} ) then
+  echo "#---" >! ${ICE_CASEDIR}/test_output
+endif
+
+if !(-d ${ICE_RUNDIR}) mkdir -p ${ICE_RUNDIR}
+if !($?ICE_MACHINE_BLDTHRDS) then
+  set ICE_MACHINE_BLDTHRDS = 1
+endif
+if (-e ${ICE_BLDLOG_FILE}) rm ${ICE_BLDLOG_FILE}
+
+if (${ICE_CLEANBUILD} == 'true') then
+  echo "gmake clean"
+  if (${quiet} == "true") then
+    ${ICE_MACHINE_MAKE} VPFILE=Filepath EXEC=${ICE_RUNDIR}/icepack \
+        -f  ${ICE_CASEDIR}/Makefile MACFILE=${ICE_CASEDIR}/Macros.${ICE_MACHCOMP} clean >& ${ICE_BLDLOG_FILE} 
+  else
+    ${ICE_MACHINE_MAKE} VPFILE=Filepath EXEC=${ICE_RUNDIR}/icepack \
+        -f  ${ICE_CASEDIR}/Makefile MACFILE=${ICE_CASEDIR}/Macros.${ICE_MACHCOMP} clean | tee ${ICE_BLDLOG_FILE} 
+  endif
+endif
+
+echo "gmake icepack"
+if (${quiet} == "true") then
+  echo "  quiet mode on... patience"
+  ${ICE_MACHINE_MAKE} -j ${ICE_MACHINE_BLDTHRDS} VPFILE=Filepath EXEC=${ICE_RUNDIR}/icepack \
+        -f  ${ICE_CASEDIR}/Makefile MACFILE=${ICE_CASEDIR}/Macros.${ICE_MACHCOMP} >& ${ICE_BLDLOG_FILE} 
+  set bldstat = ${status}
+else
+  ${ICE_MACHINE_MAKE} -j ${ICE_MACHINE_BLDTHRDS} VPFILE=Filepath EXEC=${ICE_RUNDIR}/icepack \
+        -f  ${ICE_CASEDIR}/Makefile MACFILE=${ICE_CASEDIR}/Macros.${ICE_MACHCOMP} | tee ${ICE_BLDLOG_FILE} 
+  set bldstat = ${status}
+endif
+
+if !(-d ${ICE_LOGDIR}) mkdir -p ${ICE_LOGDIR}
+cp -p ${ICE_BLDLOG_FILE} ${ICE_LOGDIR}/
+
+if (${bldstat} != 0) then
+  echo "${0}: COMPILE FAILED, see"
+  echo "  cat ${ICE_OBJDIR}/${ICE_BLDLOG_FILE}"
+  if (${quiet} == "true") then
+    tail -10 ${ICE_OBJDIR}/${ICE_BLDLOG_FILE}
+  endif
+  if ( ${ICE_TEST} != ${ICE_SPVAL} ) then
+    # This is a test case.  Write output to test_output file
+    echo "FAIL ${ICE_TESTNAME} build" >> ${ICE_CASEDIR}/test_output
+    echo "FAIL ${ICE_TESTNAME} run" >> ${ICE_CASEDIR}/test_output
+  endif
+  exit 99
+endif
+
+echo "`date` ${0}:${ICE_CASENAME} build completed ${ICE_BLDLOG_FILE}"  >> ${ICE_CASEDIR}/README.case
+echo "${0}: COMPILE SUCCESSFUL, ${ICE_LOGDIR}/${ICE_BLDLOG_FILE}"
+if ( ${ICE_TEST} != ${ICE_SPVAL} ) then
+  echo "PASS ${ICE_TESTNAME} build" >> ${ICE_CASEDIR}/test_output
+  echo "PEND ${ICE_TESTNAME} run" >> ${ICE_CASEDIR}/test_output
+endif
+

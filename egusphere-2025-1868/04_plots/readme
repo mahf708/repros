@@ -1,0 +1,8 @@
+Sample code to reproduce the plots in the manuscript.
+
+figures 1 and 2: fig1_fig2
+figure 3: fig3
+figures 4, 5, and 6: fig4_fig5_fig6
+
+For fig4_fig5_fig6, you will need to produce climatologies,
+see climo for that

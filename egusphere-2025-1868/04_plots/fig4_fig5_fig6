@@ -1,0 +1,177 @@
+#!/usr/bin/env python
+
+import xarray as xr
+from matplotlib import pyplot as plt
+from cartopy import crs as ccrs
+
+exps = {
+    "v3-rel.base.00.pd": ["v3.LR.F2010.sens.base.minCDNC00.PD", "S_1x16_nmonths"],
+    "v3-rel.base.00.pi": ["v3.LR.F2010.sens.base.minCDNC00.PI", "S_1x16_nmonths"],
+    "v3-rel.base.20.pd": ["v3.LR.F2010.sens.base.minCDNC20.PD", "S_1x16_nmonths"],
+    "v3-rel.base.20.pi": ["v3.LR.F2010.sens.base.minCDNC20.PI", "S_1x16_nmonths"],
+    "v3-spa.base.00.pd": ["v3.LR.F2010-SPA.sens.base.minCDNC00.PD", "S_1x15_nmonths"],
+    "v3-spa.base.00.pi": ["v3.LR.F2010-SPA.sens.base.minCDNC00.PI", "S_1x15_nmonths"],
+    "v3-spa.sp55.00.pd": ["v3.LR.F2010-SPA.sens.sp55.minCDNC00.PD", "S_1x15_nmonths"],
+    "v3-spa.sp55.00.pi": ["v3.LR.F2010-SPA.sens.sp55.minCDNC00.PI", "S_1x15_nmonths"],
+}
+expe = list(set([k.replace(".pd", "") if ".pd" in k else k.replace(".pi", "") for k in exps.keys()]))
+
+data = {}
+for exp, (expn, dirn) in exps.items():
+    data[exp] = xr.open_mfdataset(f"/lcrc/group/e3sm/ac.ngmahfouz/E3SMv3/{expn}/tests/{dirn}/run/*_??_*_climo.nc")
+
+month_weight_pre = data[exp].time.dt.days_in_month/data[exp].time.dt.days_in_month.sum()
+
+erf_raw, erf_gm, erf_tm = {}, {}, {}
+cdd_raw, cdd_gm, cdd_tm = {}, {}, {}
+cdp_raw, cdp_gm, cdp_tm = {}, {}, {}
+for exp in expe:
+    erf_raw[exp] = (
+        (
+            data[f"{exp}.pd"].FSNT -
+            data[f"{exp}.pd"].FLNT
+        ) -
+        (
+            data[f"{exp}.pi"].FSNT -
+            data[f"{exp}.pi"].FLNT
+        )
+    ).sel(time="2010").compute()
+    cdd_raw[exp] = (
+        data[f"{exp}.pd"].cdnc - data[f"{exp}.pi"].cdnc
+    ).sel(time="2010").compute()
+    cdp_raw[exp] = (
+        data[f"{exp}.pd"].cdnc
+    )
+    erf_gm[exp] = erf_raw[exp].weighted(data[f"{exp}.pd"].sel(time="2010").area).mean(("ncol")).compute()
+    cdd_gm[exp] = cdd_raw[exp].weighted(data[f"{exp}.pd"].sel(time="2010").area).mean(("ncol")).compute()
+    cdp_gm[exp] = cdp_raw[exp].weighted(data[f"{exp}.pd"].sel(time="2010").area).mean(("ncol")).compute()
+    erf_tm[exp] = erf_raw[exp].weighted(month_weight_pre).mean("time").compute()
+    cdd_tm[exp] = cdd_raw[exp].weighted(month_weight_pre).mean("time").compute()
+    cdp_tm[exp] = cdp_raw[exp].weighted(month_weight_pre).mean("time").compute()
+
+new_month = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+
+exp_labels = {
+    'v3-rel.base.20': r"E3SM-MAM v3; $N_{\text{c}} \geq 20$ cm$^{-3}$",
+    'v3-rel.base.00': r"E3SM-MAM v3",
+    'v3-spa.sp55.00': r"E3SM-SPA v3; $\alpha = 2000 \left(N_\text{ccn} C_\text{f}\right)^{0.55}$",
+    'v3-spa.base.00': r"E3SM-SPA v3; $\alpha = N_\text{ccn} C_\text{f}$",
+}
+
+for exp, lab in exp_labels.items():
+    if "spa" in exp:
+        _style = "-"
+    else: _style = "--"
+    lab_val = erf_gm[exp].weighted(month_weight_pre).mean("time").values
+    plt.plot(new_month, erf_gm[exp], label=f"{lab_val:.2f} " +lab, linestyle=_style)
+plt.ylabel("ERFaer (W m$^{-2}$)")
+plt.xlabel("Month")
+plt.ylim(-3.4, 0.4)
+plt.legend()
+plt.savefig("e3sm_spa_ts.png", dpi=300, bbox_inches="tight")
+
+def fix_lon(x):
+    return (x + 180) % 360 - 180
+
+# for exp, lab in zip(exps, ["Present-day", "Pre-industrial"]):
+figure, axs = plt.subplots(
+    len(expe), 1,
+    subplot_kw=dict(projection=ccrs.PlateCarree()),
+    figsize=(6, len(expe)*3.5)
+)
+
+# enumerate over expe
+for i, exp in enumerate(list(exp_labels.keys())):
+    print(exp)
+    ax = axs[i]
+    month_weight = month_weight_pre.copy()
+    erf_val = erf_gm[exp].weighted(month_weight_pre).mean("time").values
+
+    ds = erf_tm[exp].values
+    ds0 = data[f"{exp}.pd"]
+    print(ds0.lon.size, ds0.lat.size, ds.size)
+    pl = ax.tripcolor(
+        fix_lon(ds0.isel(time=0)["lon"]),
+        ds0.isel(time=0)["lat"],
+        ds,
+        # cmap for red blue
+        transform=ccrs.PlateCarree(), cmap="RdBu_r",
+        vmin=-10.5, vmax=10.5,
+        shading="gouraud"
+    )
+    ax.set_global()
+    ax.coastlines(color='black', resolution='50m', linewidth=0.5)
+    ax.set_title(f"{erf_val:.2f}", fontsize=12, loc="left")
+    ax.set_title(exp_labels[exp], fontsize=12, loc="right")
+cbar = figure.colorbar(pl, ax=axs, orientation='horizontal', fraction=0.030, pad=0.03)
+cbar.set_label(r"ERFaer (W m$^{-2}$)")
+plt.savefig(f"e3sm_spa_maps.png", bbox_inches='tight', dpi=300)
+
+from matplotlib.colors import LogNorm
+
+def fix_lon(x):
+    return (x + 180) % 360 - 180
+
+# Create a single figure with two panels
+figure, axs = plt.subplots(
+    len(expe), 2,
+    subplot_kw=dict(projection=ccrs.PlateCarree()),
+    figsize=(12, len(expe)*3.5)
+)
+
+# Left panel: Present-day
+for i, exp in enumerate(list(exp_labels.keys())):
+    print(exp)
+    ax = axs[i, 0]
+    month_weight = month_weight_pre.copy()
+    erf_val = cdp_gm[exp].where(cdp_gm[exp]>1e1,1e1).weighted(month_weight_pre).mean("time").values/1e6
+
+    ds = cdp_tm[exp].where(cdp_tm[exp]>1e1,1e1).values/1e6
+    ds0 = data[f"{exp}.pd"]
+    print(ds0.lon.size, ds0.lat.size, ds.size)
+    pl1 = ax.tripcolor(
+        fix_lon(ds0.isel(time=0)["lon"]),
+        ds0.isel(time=0)["lat"],
+        ds,
+        # cmap brown to green
+        transform=ccrs.PlateCarree(), cmap="YlOrBr",
+        norm=LogNorm(vmin=8, vmax=300),
+        shading="gouraud"
+    )
+    ax.set_global()
+    ax.coastlines(color='black', resolution='50m', linewidth=0.5)
+    ax.set_title(f"{erf_val:.2f}", fontsize=12, loc="left")
+    ax.set_title(exp_labels[exp], fontsize=12, loc="right")
+
+# Right panel: Pre-industrial
+for i, exp in enumerate(list(exp_labels.keys())):
+    print(exp)
+    ax = axs[i, 1]
+    month_weight = month_weight_pre.copy()
+    erf_val = cdd_gm[exp].where(cdd_gm[exp]>1e1,1e1).weighted(month_weight_pre).mean("time").values/1e6
+
+    ds = cdd_tm[exp].where(cdd_tm[exp]>1e1,1e1).values/1e6
+    ds0 = data[f"{exp}.pd"]
+    print(ds0.lon.size, ds0.lat.size, ds.size)
+    pl2 = ax.tripcolor(
+        fix_lon(ds0.isel(time=0)["lon"]),
+        ds0.isel(time=0)["lat"],
+        ds,
+        # cmap brown to green
+        transform=ccrs.PlateCarree(), cmap="BrBG_r",
+        vmin=-15, vmax=15,
+        shading="gouraud"
+    )
+    ax.set_global()
+    ax.coastlines(color='black', resolution='50m', linewidth=0.5)
+    ax.set_title(f"{erf_val:.2f}", fontsize=12, loc="left")
+    ax.set_title(exp_labels[exp], fontsize=12, loc="right")
+
+# Add colorbars
+cbar1 = figure.colorbar(pl1, ax=axs[:, 0], orientation='horizontal', fraction=0.030, pad=0.03)
+cbar1.set_label(r"PD grid-mean cloud-top $N_\text{c}$ (cm$^{-3}$)")
+cbar2 = figure.colorbar(pl2, ax=axs[:, 1], orientation='horizontal', fraction=0.030, pad=0.03)
+cbar2.set_label(r"$\Delta$ grid-mean cloud-top $N_\text{c}$ (cm$^{-3}$)")
+
+plt.savefig(f"e3sm_spa_cdnc_combined_maps.png", bbox_inches='tight', dpi=300)
+# plt.close()
