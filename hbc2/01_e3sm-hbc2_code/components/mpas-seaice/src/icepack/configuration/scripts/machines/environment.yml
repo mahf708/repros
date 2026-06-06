@@ -1,0 +1,15 @@
+name: icepack
+channels:
+  - conda-forge
+  - nodefaults
+dependencies:
+# Build dependencies
+  - compilers
+  - netcdf-fortran
+  - netcdf4
+  - make
+# Plotting dependencies
+  - gnuplot
+# Python dependencies for building the HTML documentation
+  - sphinx
+  - sphinxcontrib-bibtex

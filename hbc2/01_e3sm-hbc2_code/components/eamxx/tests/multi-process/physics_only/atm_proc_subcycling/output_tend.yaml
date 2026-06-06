@@ -1,0 +1,12 @@
+%YAML 1.1
+---
+filename_prefix: shoc_p3_tend_${POSTFIX}
+averaging_type: instant
+field_names:
+  - tke
+  - shoc_tke_tend
+
+output_control:
+  frequency: ${NUM_STEPS}
+  frequency_units: nsteps
+...

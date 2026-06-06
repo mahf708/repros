@@ -1,0 +1,13 @@
+%YAML 1.1
+---
+filename_prefix: shoc_p3_${POSTFIX}_nudged_remapped
+averaging_type: instant
+vertical_remap_file: vertical_remap.nc
+field_names:
+  - T_mid
+  - qv
+ 
+output_control:
+  frequency: ${NUM_STEPS}
+  frequency_units: nsteps
+...
