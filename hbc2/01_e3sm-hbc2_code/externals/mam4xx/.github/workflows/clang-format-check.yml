@@ -1,0 +1,17 @@
+name: clang-format Check
+
+on:
+  workflow_call
+
+jobs:
+  formatting-check:
+    name: C++ formatting check
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+    - uses: actions/checkout@v3
+    - name: Check C++ formatting
+      uses: jidicula/clang-format-action@v4.9.0
+      with:
+        clang-format-version: '14'
+        check-path: 'src'
