@@ -1,0 +1,14 @@
+HPSS is a long-term archive system. Learn more about it here.
+https://docs.nersc.gov/filesystems/archive/.
+
+Under the following path, we stored outputs from experiments listed below.
+Public link: https://portal.nersc.gov/archive/home/m/mahf708/www/cess2/
+System path: /home/m/mahf708/www/cess2/
+
+Note that you may have to unzip some of the folders before using.
+Your best bet is to reach out to authors in need of help.
+
+Simulations:
+------------
+ne1024pg2_ne1024pg2.F2010-SCREAMv1.10022025.CESS2.P0K.n2048.2
+ne1024pg2_ne1024pg2.F2010-SCREAMv1.10022025.CESS2.P4K.n2048.pert

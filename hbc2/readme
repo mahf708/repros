@@ -1,0 +1,13 @@
+We additionally provide a Zenodo archival repository with the following:
+
+(1) the E3SM code (hbc2 development branch) used for the runs;
+(2) the code to reproduce the analysis and plots in the manuscript;
+(3) instructions to reproduce the runs in the manuscript;
+(4) instructions to retrieve the data files from runs.
+
+The following subfolders correspond to the items above, in order:
+
+01_e3sm-hbc2_code
+02_plots
+03_runs
+04_archive

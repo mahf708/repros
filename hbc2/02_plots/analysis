@@ -1,0 +1,628 @@
+import os.path
+import matplotlib
+from matplotlib import cm
+matplotlib.use('TkAgg')
+import matplotlib.pyplot as plt
+import xarray as xr
+import numpy as np
+from scipy.special import gamma
+import glob
+from scipy import stats
+import shutil
+from scipy import interpolate
+import matplotlib.tri as tri
+#from mpl_toolkits.basemap import Basemap
+from scipy.ndimage import gaussian_filter
+import xcdat
+
+run_new = False
+
+sim_control = '/pscratch/sd/b/beydoun/control_anvil_diags.nc'
+sim_plus4k = '/pscratch/sd/b/beydoun/plus4k_anvil_diags.nc'
+
+ds_control = xr.open_mfdataset(sim_control)
+ds_plus4k = xr.open_mfdataset(sim_plus4k)
+ds_mass_flux_control = xr.open_mfdataset('/global/cfs/cdirs/e3sm/beydoun/cess2_site_output/control_mass_flux.nc')
+ds_mass_flux_plus4k = xr.open_mfdataset('/global/cfs/cdirs/e3sm/beydoun/cess2_site_output/plus4k/plus4k_mass_flux.nc')
+#framework based on: 
+#CF = delta*M*tau where M = Q/S/alpha. For the most basic recipe, we need cloud sinks and source,in_cloud cloud mass, in cloud mass flux, 
+#cloud fraction, static stability, clear sky radiative cooling. We will also contrast with Beydoun et al for which we need CSC
+#lets start with the basics, Q, S, omega_up, DIV, CF, q_in_cloud, sources, sinks
+
+p_mean = ds_control['lev'].values*100
+
+lat = ds_control['lat'].values
+
+I = (lat < 30) & (lat > -30)
+
+area = ds_control['area'].values
+
+area = area.reshape((1,len(area),1))
+
+def tropical_average(var):
+    var_mean = np.mean(var[:,I,:]*area[:,I,:],(0,1))/np.mean(area[:,I,:],(0,1))
+    return var_mean
+
+def in_cloud_average(var,count):
+    var_copy = var.copy()
+    #var_copy[count==0.0] = 0.0 
+    var_mean = np.nanmean(var_copy[:,I,:]*area[:,I,:]*count[:,I,:],(0,1))/np.mean(area[:,I,:],(0,1))
+    return var_mean
+
+def in_cloud_sum(var,count):
+    var_copy = var.copy()
+    var_copy[np.isnan(var_copy)] = 0.0
+    #var_mean = np.sum(var_copy[:,I,:]*area[:,I,:]*count[:,I,:],(0,1))/np.sum(area[:,I,:],(0,1))/len(var_copy[0,:,0])
+    var_mean = np.mean(np.sum(count[:,I,:]*area[:,I,:]*var_copy[:,I,:],1)/np.sum(area[:,I,:],(0,1)),0)
+    return var_mean
+
+def get_vars(ds,ds_mass_flux):
+
+    T = tropical_average(ds['T_mid'].values)
+
+    p = (ds['p_mid'].values)
+
+    
+    count_ice = ds['count_where_qi_plus_qc_gt_0.00001'].values
+
+    flux_sw_cs = (ds['SW_clrsky_flux_up'].values - ds['SW_clrsky_flux_dn'].values)
+    flux_lw_cs = (ds['LW_clrsky_flux_up'].values - ds['LW_clrsky_flux_dn'].values)
+
+    flux_sw = (ds['SW_clrsky_flux_up'].values - ds['SW_clrsky_flux_dn'].values)
+    flux_lw = (ds['LW_flux_up'].values - ds['LW_flux_dn'].values)
+
+    Q_rad_clrsky = (np.diff(flux_sw_cs,axis=2)/np.gradient(p,axis=2) + np.diff(flux_lw_cs,axis=2)/np.gradient(p,axis=2))*9.81/1000
+
+    Q_rad = (np.diff(flux_sw,axis=2)/np.gradient(p,axis=2) + np.diff(flux_lw,axis=2)/np.gradient(p,axis=2))*9.81/1000
+    F_rad_clrsky = tropical_average(flux_sw_cs) + tropical_average(flux_lw_cs)
+    F_rad = tropical_average(flux_sw) + tropical_average(flux_lw) 
+    #clear sky
+    omega_dn = in_cloud_sum(ds['omega_where_qi_plus_qc_gt_0.00001'].values,count_ice)
+  
+    S = in_cloud_average(ds['DryStaticEnergy_pvert_derivative_where_qi_le_0.00001'].values,1-count_ice)
+
+    Q = in_cloud_average(ds['rrtmgp_T_mid_tend_where_qi_plus_qc_le_0.00001'].values,1-count_ice)
+
+    Q_dyn_clr = in_cloud_average(ds['homme_T_mid_tend_where_qi_plus_qc_le_0.00001'].values,1-count_ice)
+    #cloudy sky
+    div_ice = in_cloud_sum(ds['omega_pvert_derivative_where_qi_plus_qc_gt_0.00001'].values,count_ice)
+
+    omega_up = in_cloud_sum(ds['omega_where_qi_plus_qc_gt_0.00001'].values,count_ice)
+
+    #in cloud mixing ratios
+
+    qi_in_cloud = ds['qi_where_qi_plus_qc_gt_0.00001'].values
+
+    qc_in_cloud = ds['qc'].values/count_ice
+
+    qc_in_cloud[np.isinf(qc_in_cloud)] = np.nan
+
+    #in cloud sources
+    vap_dep = (ds['qv2qi_vapdep_where_qi_plus_qc_gt_0.00001'].values)
+
+    sublim = (ds['qi2qv_sublim_where_qi_plus_qc_gt_0.00001'].values)
+
+    evap = (ds['shoc_evap_where_qi_plus_qc_gt_0.00001'].values)
+
+    cond = (ds['shoc_cond_where_qi_plus_qc_gt_0.00001'].values)
+
+    homme_qi_tend_in_cloud = ds['homme_qi_tend_where_qi_plus_qc_gt_0.00001'].values
+
+    homme_qc_tend_in_cloud = ds['homme_qc_tend'].values/count_ice
+
+    homme_qc_tend_in_cloud[np.isinf(homme_qc_tend_in_cloud)] = np.nan
+
+    F_sed_a = ds['precip_ice_flux_above_where_qi_plus_qc_gt_0.00001'].values
+    F_sed = ds['precip_ice_flux_below_where_qi_plus_qc_gt_0.00001'].values
+    prec_liq = ds['precip_liq_flux'].values
+    qr2qv_evap = ds_mass_flux['qr2qv_evap'].values
+
+    dqi_sed = 1000*np.gradient((F_sed_a+F_sed)*0.5,axis=2)/(np.gradient(p_mean/9.81))
+
+    dqr_sed = 1000*np.diff(prec_liq,axis=2)/(np.gradient(p_mean/9.81))
+
+    source_sum = in_cloud_sum(cond,count_ice) + in_cloud_sum(homme_qc_tend_in_cloud,count_ice) + in_cloud_sum(homme_qi_tend_in_cloud,count_ice) + in_cloud_sum(vap_dep,count_ice) 
+    sed = in_cloud_sum(dqi_sed,count_ice)
+    PE = tropical_average(qr2qv_evap)
+    P = tropical_average(dqr_sed)+in_cloud_sum(dqi_sed,count_ice)
+    sinks = in_cloud_sum(evap,count_ice) + in_cloud_sum(sublim,count_ice) + P + PE
+    CF = tropical_average(count_ice)
+    tau = (in_cloud_sum(qi_in_cloud,count_ice)+in_cloud_sum(qc_in_cloud,count_ice))/source_sum
+    delta = CF/(tau*((omega_up)/9.81)) #this is actually the equivalent of phi*deltal or CSC*deltal at the anvil level
+    qa = in_cloud_average(qc_in_cloud,count_ice)+in_cloud_average(qi_in_cloud,count_ice)
+    
+    cond_sum = in_cloud_sum(cond,count_ice) 
+    evap_sum = in_cloud_sum(evap,count_ice) 
+    return T,Q,S,omega_dn,omega_up,CF,tau,delta,qa,source_sum,sed,div_ice,sinks,P,PE,cond_sum,evap_sum,F_rad_clrsky,F_rad,Q_dyn_clr
+
+if (run_new == True): 
+   print("reading from netcdf files")
+   print("control")
+   T,Q,S,omega_dn,omega_up,CF,tau,delta,qa,source,sed,div,sinks,P,PE,cond_sum,evap_sum,F_rad_clrsky,F_rad,Q_dyn_clr = get_vars(ds_control,ds_mass_flux_control)
+   print("plus4k")
+   T_plus4k,Q_plus4k,S_plus4k,omega_dn_plus4k,omega_up_plus4k,CF_plus4k,tau_plus4k,delta_plus4k,qa_plus4k,source_plus4k,sed_plus4k,div_plus4k,sinks_plus4k,P_plus4k,PE_plus4k,cond_sum_plus4k,evap_sum_plus4k,F_rad_clrsky_plus4k,F_rad_plus4k,Q_dyn_clr_plus4k = get_vars(ds_plus4k,ds_mass_flux_plus4k)
+   np.savez('control_vars_updated_2.npz',T,Q,S,omega_dn,omega_up,CF,tau,delta,qa,source,sed,div,sinks,P,PE,cond_sum,evap_sum,F_rad_clrsky,F_rad,Q_dyn_clr)
+   np.savez('control_vars_plus4k_updated_2.npz',T_plus4k,Q_plus4k,S_plus4k,omega_dn_plus4k,omega_up_plus4k,CF_plus4k,tau_plus4k,delta_plus4k,qa_plus4k,source_plus4k,sed_plus4k,div_plus4k,sinks_plus4k,P_plus4k,PE_plus4k,cond_sum_plus4k,evap_sum_plus4k,F_rad_clrsky_plus4k,F_rad_plus4k,Q_dyn_clr_plus4k)
+else:
+   print("loading pre-saved variables")
+   f = np.load('control_vars_updated_2.npz')
+
+   T = f['arr_0']
+   Q = f['arr_1']
+   S = f['arr_2']
+   omega_dn = f['arr_3']
+   omega_up = f['arr_4']
+   CF = f['arr_5']
+   tau = f['arr_6']
+   delta = f['arr_7']
+   qa = f['arr_8']
+   source = f['arr_9']
+   sed = f['arr_10']
+   div = f['arr_11']
+   sinks = f['arr_12']
+   P = f['arr_13']
+   PE = f['arr_14']
+   F_rad_clrsky = f['arr_17']
+   f = np.load('control_vars_plus4k_updated_2.npz')
+
+   T_plus4k = f['arr_0']
+   Q_plus4k = f['arr_1']
+   S_plus4k = f['arr_2']
+   omega_dn_plus4k = f['arr_3']
+   omega_up_plus4k = f['arr_4']
+   CF_plus4k = f['arr_5']
+   tau_plus4k = f['arr_6']
+   delta_plus4k = f['arr_7']
+   qa_plus4k = f['arr_8']
+   source_plus4k = f['arr_9']
+   sed_plus4k = f['arr_10']
+   div_plus4k = f['arr_11']
+   sinks_plus4k = f['arr_12']
+   P_plus4k = f['arr_13']
+   PE_plus4k = f['arr_14']
+   F_rad_clrsky_plus4k = f['arr_17']
+
+dl = np.log(qa)-np.log(1e-5)
+dl_plus4k = np.log(qa_plus4k)-np.log(1e-5)
+
+tau = CF*qa/(sinks)
+tau_plus4k = CF_plus4k*qa_plus4k/(sinks_plus4k)
+
+#temperature coordinates
+from scipy.interpolate import interp1d
+T_l = np.linspace(197,297,100)
+def interpolate_to_T(var,var_plus4k,ind,ind_plus4k):
+    linear_interp = interp1d(T[ind:],var[ind:], kind='linear')
+    linear_interp_plus4k = interp1d(T_plus4k[ind_plus4k:],var_plus4k[ind_plus4k:], kind='linear')
+    var_l = linear_interp(T_l)
+    var_l_plus4k = linear_interp_plus4k(T_l)
+    return var_l,var_l_plus4k
+
+p_l,p_l_plus4k = interpolate_to_T(p_mean,p_mean,35,27)
+S_l,S_l_plus4k = interpolate_to_T(-S,-S_plus4k,35,27)
+CF_l,CF_l_plus4k = interpolate_to_T(CF,CF_plus4k,35,27)
+omega_up_l,omega_up_l_plus4k = interpolate_to_T(omega_up,omega_up_plus4k,35,27)
+omega_dn_l,omega_dn_l_plus4k = interpolate_to_T(omega_dn,omega_dn_plus4k,35,27)
+Q_l,Q_l_plus4k = interpolate_to_T(Q,Q_plus4k,35,27)
+div_l,div_l_plus4k = interpolate_to_T(div,div_plus4k,35,27)
+dl_l,dl_l_plus4k = interpolate_to_T(dl,dl_plus4k,35,27)
+
+source_l,source_l_plus4k = interpolate_to_T(source,source_plus4k,35,27)
+qa_l,qa_l_plus4k = interpolate_to_T(qa,qa_plus4k,35,27)
+tau_l,tau_l_plus4k = interpolate_to_T(tau,tau_plus4k,35,27)
+sinks_l,sink_l_plus4k = interpolate_to_T(sinks,sinks_plus4k,35,27)
+P_l,P_l_plus4k = interpolate_to_T(P,P_plus4k,35,27)
+##F_rad_l,F_rad_l_plus4k = interpolate_to_T(np.diff(F_rad),np.diff(F_rad_plus4k),35,27)
+
+ro = p_l/(287*T_l)
+ro_plus4k = p_l_plus4k/(287*T_l)
+
+gam_d = 9.81*1e-3
+
+gam = (1-S_l*ro)*gam_d
+gam_plus4k = (1-S_l_plus4k*ro_plus4k)*gam_d
+
+inv_S = ((1/gam)-(1/gam_d))**(-1)
+inv_S_plus4k = ((1/gam_plus4k)-(1/gam_d))**(-1)
+
+Q_T = Q_l*ro/gam
+Q_T_plus4k = Q_l_plus4k*ro_plus4k/gam_plus4k
+
+dZ = 1/gam
+dZ_plus4k = 1/gam_plus4k
+
+dp = dZ*9.81*ro
+dp_plus4k = dZ_plus4k*9.81*ro_plus4k
+
+#inverse subsidence timescale
+#(gam/dT)*(omega/ro) or (gam/dT)*(F_T*inv_S/ro). This exhibits much weaker SST dependence
+#than omega alone
+tau_i_sub = -(gam/np.gradient(T_l))*omega_dn_l/ro/9.81 
+tau_i_sub_plus4k = -(gam_plus4k/np.gradient(T_l))*omega_dn_l_plus4k/ro_plus4k/9.81
+
+tau_i_cloud = -(omega_up_l/CF_l)*(gam/np.gradient(T_l))/ro/9.81
+tau_i_cloud_plus4k = -(omega_up_l_plus4k/CF_l_plus4k)*(gam_plus4k/np.gradient(T_l))/ro_plus4k/9.81
+
+deltaq = source_l/CF_l/tau_i_cloud
+deltaq_plus4k = source_l_plus4k/CF_l_plus4k/tau_i_cloud_plus4k
+tau_l,tau_l_plus4k = interpolate_to_T(tau,tau_plus4k,35,27)
+delta = (-1/tau_i_cloud)/tau_l
+delta_plus4k = (-1/tau_i_cloud_plus4k)/tau_l_plus4k
+
+Q_clr = np.diff(F_rad_clrsky)/np.gradient(p_mean)
+
+Q_clr_plus4k = np.diff(F_rad_clrsky_plus4k)/np.gradient(p_mean)
+
+Q_clr_l,Q_clr_l_plus4k = interpolate_to_T(Q_clr,Q_clr_plus4k,35,27)
+tau_i_sub_calc = -(Q_clr_l*9.81/1000*(ro/gam))*inv_S*1000/dp
+tau_i_sub_calc_plus4k = -(Q_clr_l_plus4k*9.81/1000*(ro_plus4k/gam_plus4k))*inv_S_plus4k*1000/dp_plus4k
+
+omega_dn_calc = 1000*Q_l/S_l
+omega_dn_calc_plus4k = 1000*Q_l_plus4k/S_l_plus4k
+
+#omega_dn_calc = Q_clr_l/S_l
+#omega_dn_calc_plus4k = Q_clr_l_plus4k/S_l_plus4k
+
+CF_calc = -(Q_clr_l*9.81/1000*(ro/gam))*inv_S*1000/dp/tau_i_cloud
+CF_calc_plus4k = -(Q_clr_l_plus4k*9.81/1000*(ro_plus4k/gam_plus4k))*inv_S_plus4k*1000/dp_plus4k/tau_i_cloud_plus4k
+
+size_1 = 8
+
+size_2 = 6
+fs = 24
+fs_tick = 20 #default is 18
+ms_size = 14
+legend_font_size = 14
+
+fig_number = 0
+
+plt.figure(fig_number,(size_1,size_2))
+
+plt.plot(-omega_dn_l,T_l)
+plt.plot(-omega_dn_l_plus4k,T_l)
+plt.xlabel(r'$omega \ (Pa.s^{-1})$')
+plt.ylabel('p (Pa)')
+plt.ylim(300,195)
+plt.tick_params(labelsize=fs_tick);
+plt.ticklabel_format(axis="x", style="sci", scilimits=(0,0))
+plt.rc('font', size=fs_tick)
+plt.legend()
+plt.tight_layout()
+
+fig_number = fig_number + 1
+
+plt.figure(fig_number,(size_1,size_2))
+
+plt.plot(-S,T)
+plt.plot(-S_plus4k,T_plus4k)
+plt.xlabel(r'$S \ (K.Pa^{-1})$')
+plt.ylabel('T (K)')
+plt.ylim(300,195)
+plt.xlim(0.2,2)
+plt.tick_params(labelsize=fs_tick);
+plt.ticklabel_format(axis="x", style="sci", scilimits=(0,0))
+plt.rc('font', size=fs_tick)
+plt.legend()
+plt.tight_layout()
+
+#on temp coordinates:
+fig_number = fig_number + 1
+
+plt.figure(fig_number,(size_1,size_2))
+
+plt.plot(CF_l,T_l)
+plt.plot(CF_l_plus4k,T_l)
+plt.xlabel(r'$CF$')
+plt.ylabel('T (K)')
+plt.ylim(300,195)
+plt.tick_params(labelsize=fs_tick);
+plt.ticklabel_format(axis="x", style="sci", scilimits=(0,0))
+plt.rc('font', size=fs_tick)
+plt.legend()
+plt.tight_layout()
+
+fig_number = fig_number + 1
+
+plt.figure(fig_number,(size_1,size_2))
+
+plt.plot(inv_S,T_l)
+plt.plot(inv_S_plus4k,T_l)
+plt.xlabel(r'$S_{inverse} \ (K/m)$')
+plt.ylabel('T (K)')
+plt.ylim(300,195)
+plt.tick_params(labelsize=fs_tick);
+plt.ticklabel_format(axis="x", style="sci", scilimits=(0,0))
+plt.rc('font', size=fs_tick)
+plt.legend()
+plt.tight_layout()
+
+fig_number = fig_number + 1
+plt.figure(fig_number,(size_1,size_2))
+plt.plot(-Q_l,T_l)
+plt.plot(-Q_l_plus4k,T_l) 
+plt.xlabel(r'$dF_{p} \ (W/m^{2}/K)$')
+plt.ylabel('T (K)')
+plt.ylim(300,195)
+#plt.xlim(0,5e-3)
+plt.tick_params(labelsize=fs_tick);
+plt.ticklabel_format(axis="x", style="sci", scilimits=(0,0))
+plt.rc('font', size=fs_tick)
+plt.legend()
+plt.tight_layout()
+
+fig_number = fig_number + 1
+plt.figure(fig_number,(size_1,size_2))
+plt.plot(-Q_T,T_l)
+plt.plot(-Q_T_plus4k,T_l)
+plt.xlabel(r'$dF_{T} \ (W/m^{2}/K)$')
+plt.ylabel('T (K)')
+plt.ylim(300,195)
+plt.xlim(-0.5e-3,5e-3)
+plt.tick_params(labelsize=fs_tick);
+plt.ticklabel_format(axis="x", style="sci", scilimits=(0,0))
+plt.rc('font', size=fs_tick)
+plt.legend()
+plt.tight_layout()
+
+fig_number = fig_number + 1
+plt.figure(fig_number,(size_1,size_2))
+#plt.plot(inv_S*(gam/np.gradient(T_l))/ro,T_l)
+#plt.plot(inv_S_plus4k*(gam_plus4k/np.gradient(T_l))/ro_plus4k,T_l)
+plt.plot(tau_i_sub,T_l)
+plt.plot(tau_i_sub_plus4k,T_l)
+plt.xlabel(r'$ \tau_{i,sub} \ (s^{-1})$')
+plt.ylabel('T (K)')
+plt.ylim(300,195)
+plt.tick_params(labelsize=fs_tick);
+plt.ticklabel_format(axis="x", style="sci", scilimits=(0,0))
+plt.rc('font', size=fs_tick)
+plt.legend()
+plt.tight_layout()
+
+fig_number = fig_number + 1
+plt.figure(fig_number,(size_1,size_2))
+plt.plot(tau_i_cloud,T_l)
+plt.plot(tau_i_cloud_plus4k,T_l)
+plt.xlabel(r'$ \tau_{i,cloud} \ (s^{-1})$')
+plt.ylabel('T (K)')
+plt.ylim(300,195)
+plt.tick_params(labelsize=fs_tick);
+plt.ticklabel_format(axis="x", style="sci", scilimits=(0,0))
+plt.rc('font', size=fs_tick)
+plt.legend()
+plt.tight_layout()
+
+fig_number = fig_number + 1
+plt.figure(fig_number,(size_1,size_2))
+plt.plot(tau_l,T_l)
+plt.plot(tau_l_plus4k,T_l)
+plt.xlabel(r'$ \tau_{mp} / (s)$')
+plt.ylabel('T (K)')
+plt.ylim(300,195)
+plt.xlim(0,6000)
+plt.tick_params(labelsize=fs_tick);
+plt.ticklabel_format(axis="x", style="sci", scilimits=(0,0))
+plt.rc('font', size=fs_tick)
+plt.legend()
+plt.tight_layout()
+
+fig_number = fig_number + 1
+plt.figure(fig_number,(size_1,size_2))
+plt.plot(-delta,T_l)
+plt.plot(-delta_plus4k,T_l)
+plt.xlabel(r'$ \delta $')
+plt.ylabel('T (K)')
+plt.ylim(300,195)
+plt.xlim(0,10)
+plt.tick_params(labelsize=fs_tick);
+plt.ticklabel_format(axis="x", style="sci", scilimits=(0,0))
+plt.rc('font', size=fs_tick)
+plt.legend()
+plt.tight_layout()
+
+fig_number = fig_number + 1    
+plt.figure(fig_number,(size_1,size_2))
+plt.plot(delta*omega_dn_l/dp,T_l,label=r'$ \delta*\omega_{sub}/dp \ (s^{-1}) $')
+plt.plot(delta_plus4k*omega_dn_l_plus4k/dp_plus4k,T_l)
+plt.plot(-div_l*dl_l,T_l,color='tab:blue',linestyle='--',label=r'$CSC* \Delta l$')
+plt.plot(-div_l_plus4k*dl_l_plus4k,T_l,color='tab:orange',linestyle='--')
+#plt.xlabel(r'$ \delta*\omega_{sub}/dp \ (s^{-1}) $')
+plt.xlabel(r'$source \ (s^{-1})$')
+plt.ylabel('T (K)')
+plt.ylim(300,195)
+#plt.xlim(0,2)
+plt.tick_params(labelsize=fs_tick);
+plt.ticklabel_format(axis="x", style="sci", scilimits=(0,0))
+plt.rc('font', size=fs_tick)
+plt.legend()
+plt.tight_layout()
+
+plt.close('all')
+
+import numpy as np
+import matplotlib.pyplot as plt
+
+# =====================================================
+# GLOBAL STYLE
+# =====================================================
+
+c_ctrl = "tab:blue"
+c_p4   = "tab:red"
+
+plt.rcParams.update({
+    "font.size": 10,
+    "axes.titlesize": 11,
+    "axes.labelsize": 10,
+    "xtick.labelsize": 9,
+    "ytick.labelsize": 9,
+    "legend.fontsize": 9
+})
+
+PANEL_W = 2.8
+PANEL_H = 3.0
+
+def style_temp_profile_axes(axs, T):
+    for ax in np.ravel(axs):
+        ax.grid(True, alpha=0.3)
+        ax.set_ylim(np.max(T), np.min(T))
+        ax.tick_params(direction="out")
+
+def scale_ticks(ax, factor):
+    ax.ticklabel_format(style='plain', axis='x')
+    ticks = ax.get_xticks()
+    ax.set_xticks(ticks)
+    ax.set_xticklabels([f"{t/factor:g}" for t in ticks])
+
+# =====================================================
+# FIGURE 1
+# =====================================================
+
+omega_dn_clear = -omega_dn_l / (1.0 - CF_l)
+omega_dn_calc_pos = -omega_dn_calc
+Q_pos = -Q_l
+
+omega_dn_clear_p4 = -omega_dn_l_plus4k / (1.0 - CF_l_plus4k)
+omega_dn_calc_pos_p4 = -omega_dn_calc_plus4k
+Q_pos_p4 = -Q_l_plus4k
+
+fig1, axs = plt.subplots(2, 2, figsize=(2*PANEL_W, 2*PANEL_H),
+                         sharey=True, constrained_layout=True)
+
+axs[0,0].plot(CF_l, T_l, lw=2, color=c_ctrl, label="Control")
+axs[0,0].plot(CF_l_plus4k, T_l, lw=2, color=c_p4, label="+4K")
+axs[0,0].set_title("(a) CF")
+axs[0,0].set_xlabel("Cloud fraction")
+axs[0,0].set_ylabel("Temperature [K]")
+axs[0,0].legend(frameon=False, loc="upper right")
+
+axs[0,1].plot(omega_dn_clear, T_l, lw=2, color=c_ctrl)
+axs[0,1].plot(omega_dn_calc_pos, T_l, lw=2, ls="--", color=c_ctrl)
+axs[0,1].plot(omega_dn_clear_p4, T_l, lw=2, color=c_p4)
+axs[0,1].plot(omega_dn_calc_pos_p4, T_l, lw=2, ls="--", color=c_p4)
+axs[0,1].set_title("(b) Subsidence")
+axs[0,1].set_xlabel(r"$\omega_{\rm dn}$ [$10^{-2}$ Pa s$^{-1}$]")
+scale_ticks(axs[0,1], 1e-2)
+
+axs[1,0].plot(Q_pos, T_l, lw=2, color=c_ctrl)
+axs[1,0].plot(Q_pos_p4, T_l, lw=2, ls="--", color=c_p4)
+axs[1,0].set_title("(c) Radiative cooling")
+axs[1,0].set_xlabel(r"$Q$ [$10^{-5}$ K s$^{-1}$]")
+axs[1,0].set_ylabel("Temperature [K]")
+scale_ticks(axs[1,0], 1e-5)
+
+axs[1,1].plot(S_l, T_l, lw=2, color=c_ctrl)
+axs[1,1].plot(S_l_plus4k, T_l, lw=2, ls="--", color=c_p4)
+axs[1,1].set_title("(d) Stability")
+axs[1,1].set_xlabel(r"$S$ [K Pa$^{-1}$]")
+
+style_temp_profile_axes(axs, T_l)
+
+fig1.savefig("fig1.pdf", bbox_inches="tight", dpi=300)
+
+# =====================================================
+# FIGURE 2
+# =====================================================
+
+Q_T_pos = -Q_T
+Q_T_pos_p4 = -Q_T_plus4k
+
+fig2, axs = plt.subplots(1, 2, figsize=(2*PANEL_W, PANEL_H),
+                         sharey=True, constrained_layout=True)
+
+axs[0].plot(Q_T_pos, T_l, lw=2, color=c_ctrl, label="Control")
+axs[0].plot(Q_T_pos_p4, T_l, lw=2, color=c_p4, label="+4K")
+axs[0].set_title(r"(a) $dF/dT$")
+axs[0].set_xlabel(r"$dF/dT$ [$10^{-3}$ W m$^{-3}$ K$^{-1}$]")
+axs[0].set_ylabel("Temperature [K]")
+scale_ticks(axs[0], 1e-3)
+axs[0].legend(frameon=False, loc="upper right")
+
+axs[1].plot(inv_S, T_l, lw=2, color=c_ctrl)
+axs[1].plot(inv_S_plus4k, T_l, lw=2, color=c_p4)
+axs[1].set_title(r"(b) $S_{\rm inv}$")
+axs[1].set_xlabel(r"$S_{\rm inv}$ [m K$^{-1}$]")
+
+style_temp_profile_axes(axs, T_l)
+
+fig2.savefig("fig2.pdf", bbox_inches="tight", dpi=300)
+
+# =====================================================
+# FIGURE 3
+# =====================================================
+
+fig3, axs = plt.subplots(1, 3, figsize=(3*PANEL_W, PANEL_H),
+                         sharey=True, constrained_layout=True)
+
+axs[0].plot(tau_i_sub, T_l, lw=2, color=c_ctrl, label="Control")
+axs[0].plot(tau_i_sub_plus4k, T_l, lw=2, color=c_p4, label="+4K")
+axs[0].set_title(r"(a) $\tau_{i,\rm sub}$")
+axs[0].set_xlabel(r"$\tau_{i,\rm sub}$ [$10^{-5}$ s$^{-1}$]")
+axs[0].set_ylabel("Temperature [K]")
+scale_ticks(axs[0], 1e-5)
+axs[0].legend(frameon=False, loc="upper right")
+
+axs[1].plot(tau_i_cloud, T_l, lw=2, color=c_ctrl)
+axs[1].plot(tau_i_cloud_plus4k, T_l, lw=2, color=c_p4)
+axs[1].set_title(r"(b) $\tau_{i,\rm cloud}$")
+axs[1].set_xlabel(r"$\tau_{i,\rm cloud}$ [$10^{-4}$ s$^{-1}$]")
+scale_ticks(axs[1], 1e-4)
+
+axs[2].plot(CF_l, T_l, lw=2, color=c_ctrl)
+axs[2].plot(CF_calc, T_l, lw=2, ls="--", color=c_ctrl)
+axs[2].plot(CF_l_plus4k, T_l, lw=2, color=c_p4)
+axs[2].plot(CF_calc_plus4k, T_l, lw=2, ls="--", color=c_p4)
+axs[2].set_title("(c) Cloud fraction")
+axs[2].set_xlabel("Cloud fraction")
+
+style_temp_profile_axes(axs, T_l)
+
+fig3.savefig("fig3.pdf", bbox_inches="tight", dpi=300)
+
+# =====================================================
+# FIGURE 4
+# =====================================================
+
+peak_idx = 30
+dTs = 4.0
+
+dln_Sinv = 100*(np.log(inv_S_plus4k[peak_idx]) - np.log(inv_S[peak_idx]))/dTs
+dln_tsub = 100*(np.log(tau_i_sub_calc_plus4k[peak_idx]) - np.log(tau_i_sub_calc[peak_idx]))/dTs
+dln_tcld = 100*(np.log(tau_i_cloud_plus4k[peak_idx]) - np.log(tau_i_cloud[peak_idx]))/dTs
+dln_CF   = 100*(np.log(CF_calc_plus4k[peak_idx]) - np.log(CF_calc[peak_idx]))/dTs
+
+dln_dp = dln_Sinv - dln_tsub
+
+vals = [dln_Sinv, -dln_dp, dln_tsub, -dln_tcld, dln_CF]
+labels = [
+    r"$S_{\rm inv}$",
+    r"$-\Delta p$",
+    r"$\tau_{i,\rm sub}$",
+    r"$-\tau_{i,\rm cloud}$",
+    r"$\mathrm{CF}$"
+]
+
+fig4, ax = plt.subplots(figsize=(2*PANEL_W, PANEL_H), constrained_layout=True)
+
+for xi,v in zip(np.arange(len(vals)), vals):
+    ax.bar(xi, v, width=0.72)
+
+ax.axhline(0, color='k', lw=1)
+ax.vlines(1.5, min(vals)-0.2, max(vals)+0.2, linestyles='--')
+ax.vlines(3.5, min(vals)-0.2, max(vals)+0.2, linestyles='--')
+
+for xi,v in zip(np.arange(len(vals)), vals):
+    ax.text(xi, v + 0.08*np.sign(v if v!=0 else 1), f"{v:.1f}",
+            ha='center', va='bottom' if v>=0 else 'top')
+
+ax.set_xticks(np.arange(len(vals)))
+ax.set_xticklabels(labels)
+ax.set_ylabel(r"$\Delta \ln X / \Delta T_s$ [% K$^{-1}$]")
+ax.set_title("Stepwise buffering")
+
+fig4.savefig("fig4.pdf", bbox_inches="tight", dpi=300)
+
+# =====================================================
+# SHOW ALL
+# =====================================================
+
+plt.show()
