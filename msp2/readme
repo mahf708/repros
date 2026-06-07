@@ -1,11 +1,17 @@
-We additionally provide an archival repository with the following:
+We provide a Zenodo archival repository with the following:
 
-(1) the E3SM code (msp2 development branch) used for the runs;
-(2) instructions/scripts to reproduce the runs;
-(3) the LHS parameter samples driving the perturbed-parameter ensemble.
+(1) the E3SMv3 code used;
+(2) instructions to reproduce the runs in the manuscript;
+(3) the Latin hypercube samples;
+(4) instructions to retrieve the data files produced by the simulations in this
+    study, which have been publicly long-term archived using NERSC HPSS;
+(5) the analysis code, plotting code, emulators, and posterior chains required
+    to reproduce the analyses and figures in the manuscript.
 
 The following subfolders correspond to the items above, in order:
 
 01_e3sm-msp2_code
 02_runs
 03_samples
+04_archive
+05_analysis
