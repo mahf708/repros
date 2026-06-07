@@ -1,0 +1,12 @@
+Run scripts for the msp2 ensemble.
+
+Default simulation runscripts for present day (PD; 2010) and pre-industrial
+(PI; aerosols set to 1850). 
+
+Contents
+--------
+pd, pi                 ensemble-member runscripts (take -o autoconv, -r accr,
+                       -p sample number)
+
+Note: machine configuration will likely drift over time; get in touch with the
+authors for help reproducing the runs in the future, if desired.

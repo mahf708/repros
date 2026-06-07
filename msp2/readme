@@ -1,0 +1,11 @@
+We additionally provide an archival repository with the following:
+
+(1) the E3SM code (msp2 development branch) used for the runs;
+(2) instructions/scripts to reproduce the runs;
+(3) the LHS parameter samples driving the perturbed-parameter ensemble.
+
+The following subfolders correspond to the items above, in order:
+
+01_e3sm-msp2_code
+02_runs
+03_samples

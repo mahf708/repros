@@ -1,0 +1,5 @@
+Latin Hypercube Sample (LHS) parameter sets for the perturbed-parameter ensemble.
+
+Each CSV has three columns:
+
+    Sample #, Accretion Factor, Autoconversion Factor
