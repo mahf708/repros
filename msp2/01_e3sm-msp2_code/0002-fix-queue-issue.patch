@@ -1,0 +1,26 @@
+From 4e4dbade05274ae7d5d2dfe104cde178c66ec756 Mon Sep 17 00:00:00 2001
+From: mahf708 <naser.mahfouz@pnnl.gov>
+Date: Thu, 9 Oct 2025 20:52:33 -0600
+Subject: [PATCH 2/2] fix queue issue
+
+---
+ cime_config/machines/config_batch.xml | 3 ---
+ 1 file changed, 3 deletions(-)
+
+diff --git a/cime_config/machines/config_batch.xml b/cime_config/machines/config_batch.xml
+index aa7e7612a1..2a7e98bc35 100644
+--- a/cime_config/machines/config_batch.xml
++++ b/cime_config/machines/config_batch.xml
+@@ -980,9 +980,6 @@
+ 
+   <batch_system MACH="derecho" type="pbs" >
+       <batch_submit>qsub</batch_submit>
+-      <submit_args>
+-        <arg flag="-l job_priority=" name="$JOB_PRIORITY" />
+-      </submit_args>
+       <directives>
+         <directive default="/bin/bash" > -S {{ shell }}  </directive>
+ 	<directive>-A {{ PROJECT }}</directive>
+-- 
+2.48.1
+
