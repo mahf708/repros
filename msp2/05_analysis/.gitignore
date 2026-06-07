@@ -1,0 +1,6 @@
+# .gitignore file
+
+# Ignore output directories
+
+mcmc_prop/
+sampler_Radiation_Only_VarCov.joblib
