@@ -4,3 +4,5 @@
 
 mcmc_prop/
 sampler_Radiation_Only_VarCov.joblib
+*_msp2
+.ipynb_checkpoints/*
