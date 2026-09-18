@@ -1,0 +1,12 @@
+Post-processed data read by the scripts in ../02_plots/scripts.
+
+The scripts expect these files in the directory they are run from; see
+../02_plots/README.md for instructions and for which script uses which file.
+
+  control_vars_minimal_full_record.npz,
+  plus4k_vars_minimal_full_record.npz     SCREAM Cess-Potter control / +4K
+                                          (this paper's runs; see ../04_archive)
+  SCREAM_ne1024_amip*_..._v3.pkl          SCREAM AMIP / AMIP4K, pre-processed
+  CMIP_amip*_19832008_..._v3*.pkl         CMIP6 AMIP / AMIP-future4K, pre-processed
+  RCEMIP/                                 RCEMIP profile archive mirrored from
+                                          swift.dkrz.de (RCE_small, RCE_large)

@@ -1,1 +1,13 @@
-Sample code to reproduce the analysis and plots in the manuscript.
+Code to reproduce the analysis and plots in the manuscript.
+
+The data these scripts read is kept separately in ../05_data.
+
+See README.md for full instructions (quick start, dependencies, and which
+script produces which figure).
+
+Contents:
+  scripts/         figure-generation scripts (paper figures 1-6 and SI figures)
+  reference_figs/  the figures as they appear in the final paper, for comparison
+  analysis         original script that derives diagnostics from raw SCREAM
+                   output on NERSC (paths under /pscratch and /global/cfs);
+                   kept for reference, not needed to regenerate the figures

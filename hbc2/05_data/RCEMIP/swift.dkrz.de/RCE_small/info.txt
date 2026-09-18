@@ -1,0 +1,50 @@
+netcdf MicroHH-VER_RCE_small300_cfv0-profiles {
+dimensions:
+	zg_avg = 144 ;
+	RGB_color = 1 ;
+variables:
+	float cfv0_avg(zg_avg) ;
+		cfv0_avg:_FillValue = NaNf ;
+		cfv0_avg:units = "" ;
+		cfv0_avg:long_name = "cfv0, averaged day 75 on" ;
+	float ta_avg(zg_avg) ;
+		ta_avg:_FillValue = NaNf ;
+		ta_avg:units = "K" ;
+		ta_avg:long_name = "absolute temperature, averaged day 75 on" ;
+	double pa_avg(zg_avg) ;
+		pa_avg:_FillValue = NaN ;
+		pa_avg:units = "hPa" ;
+		pa_avg:long_name = "pressure, averaged day 75 on" ;
+	float tw_avg(zg_avg) ;
+		tw_avg:_FillValue = NaNf ;
+		tw_avg:units = "g/g" ;
+		tw_avg:long_name = "total water, averaged day 75 on" ;
+	float hur_avg(zg_avg) ;
+		hur_avg:_FillValue = NaNf ;
+		hur_avg:units = "%" ;
+		hur_avg:long_name = "relative humidity, averaged day 75 on" ;
+	float hus_avg(zg_avg) ;
+		hus_avg:_FillValue = NaNf ;
+		hus_avg:units = "g/kg" ;
+		hus_avg:long_name = "specific humidity, averaged day 75 on" ;
+	double Cr(RGB_color) ;
+		Cr:_FillValue = NaN ;
+		Cr:long_name = "RCEMIP red color for" ;
+	double Cg(RGB_color) ;
+		Cg:_FillValue = NaN ;
+		Cg:long_name = "RCEMIP green color for" ;
+	double Cb(RGB_color) ;
+		Cb:_FillValue = NaN ;
+		Cb:long_name = "RCEMIP blue color for" ;
+	int64 Ca(RGB_color) ;
+		Ca:long_name = "RCEMIP alpha color for" ;
+	float zg_avg(zg_avg) ;
+		zg_avg:_FillValue = NaNf ;
+		zg_avg:units = "km" ;
+		zg_avg:long_name = "height, averaged day 75 on" ;
+
+// global attributes:
+		:creation_date = "2022-04-20 14:51:33.223398" ;
+		:author = "Catherine L. Stauffer" ;
+		:email = "cls14b@fsu.edu" ;
+}

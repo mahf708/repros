@@ -1,0 +1,360 @@
+
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <title>Swiftbrowser</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <link href="/static/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+        <style>
+            body { padding-top: 60px; padding-bottom: 40px; }
+            .center, th.center, td.center {text-align: center;}
+            form {margin-bottom: 0;}
+            td a.block {display: block;}
+            .breadcrumb a {font-weight: bold;}
+            code {white-space: normal !important;}
+        </style>
+        <link rel="shortcut icon" href="/static/favicon.png" />
+        
+    </head>
+
+    <body>
+        
+    <nav class="navbar navbar-default navbar-fixed-top">
+        <div class="container">
+            <div class="navbar-header">
+                <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar-collapse" aria-expanded="false">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                </button>
+                <a class="navbar-brand" href="/">Swiftbrowser</a>
+            </div>
+            <div class="collapse navbar-collapse" id="navbar-collapse">
+                <ul class="nav navbar-nav">
+                    <li><a href="https://www.dkrz.de/up/systems/swift/swiftbrowser?set_language=en&cl=en">Documentation</a></li>
+                    <li><a href="https://www.dkrz.de/about-en/contact/impressum?set_language=en&cl=en">Legal notice</a></li>
+                    <li><a href="https://www.dkrz.de/up/my-dkrz/terms-of-use?set_language=en&cl=en">Terms of Use</a></li>
+                </ul>
+                    <ul class="nav navbar-nav navbar-right">
+                    
+                        <li>
+                            <a href="/login/">
+                                <strong> Login</strong>
+                            </a>
+                        </li>
+                    
+                    </ul>
+            </div>
+        </div>
+    </nav>
+
+        <noscript>
+            <div class="container">
+                    <div class="alert alert-danger">
+                        <button type="button" class="close" data-dismiss="alert">
+                            &times;
+                        </button>
+                        <strong>Warning!</strong>
+                        You need JavaScript enabled to use all functions on this site.
+                    </div>
+            </div>
+        </noscript>
+    
+        
+
+<div class="container">
+
+
+
+	<ul class="breadcrumb">
+	     <li>Containers</li> 
+	     <li>
+	         <a class="u" href="/public/dkrz_70a517a8-039d-4a1b-a30d-841923f8bc7a/RCEMIP/">RCEMIP</a>
+	     </li>
+	     
+	         <li>
+	             <a href="/public/dkrz_70a517a8-039d-4a1b-a30d-841923f8bc7a/RCEMIP/A-Statistics/">A-Statistics</a>
+	         </li>
+	     
+	         <li>
+	             <a href="/public/dkrz_70a517a8-039d-4a1b-a30d-841923f8bc7a/RCEMIP/A-Statistics/0D/">0D</a>
+	         </li>
+	     
+	</ul> 
+	<div class="alert alert-info">
+	   <button type="button" class="close" data-dismiss="alert">&times;</button>
+	   <p>To download all objects using wget:</p>
+        <p><code>wget -r -H -N --cut-dirs=5 --include-directories="/v1/" "https://swiftbrowser.dkrz.de/public/dkrz_70a517a8-039d-4a1b-a30d-841923f8bc7a/RCEMIP/A-Statistics/0D/?show_all"</code></p>
+	</div>
+
+    
+    
+    <table class="table table-striped">
+        <thead>
+	        <tr>
+	            <th style="width: 0.5em;" class="hidden-xs"></th>
+	            <th>Name</th>
+	            <th style="width: 12.5em;" class="hidden-xs">Created (Europe/Berlin)</th>
+	            <th style="width: 6em;" class="hidden-xs">Size</th>
+                
+                <th style="width: 1em;">
+                    
+                    <div class="dropdown pull-right">
+                        <a class="dropdown-toggle btn btn-xs btn-danger" data-toggle="dropdown">
+                            <i class="glyphicon glyphicon-chevron-down glyphicon-white"></i>
+                        </a>
+                        <ul class="dropdown-menu">
+                            
+
+
+
+<li><a href="/publicview_filemanager.jnlp/0/dkrz_70a517a8-039d-4a1b-a30d-841923f8bc7a/RCEMIP/A-Statistics/0D/"><i class="glyphicon glyphicon-download"></i> Download</a></li>
+
+                        </ul>
+                    </div>
+                    
+                </th>
+                
+	        </tr>
+        </thead>
+         
+        <tbody>
+        
+
+        
+            <tr>
+                <td class="hidden-xs"><i class="glyphicon glyphicon-file"></i></td>
+                <td><a href="https://swift.dkrz.de/v1/dkrz_70a517a8-039d-4a1b-a30d-841923f8bc7a/RCEMIP/A-Statistics/0D/README.pdf" class="block">README.pdf</a></td>
+                <td class="hidden-xs">10/21/2020 3:26 a.m.</td>
+	            <td class="hidden-xs" id="bytes-0">66.6 KB</td>
+                <td></td>
+            </tr>
+
+        
+            <tr>
+                <td class="hidden-xs"><i class="glyphicon glyphicon-file"></i></td>
+                <td><a href="https://swift.dkrz.de/v1/dkrz_70a517a8-039d-4a1b-a30d-841923f8bc7a/RCEMIP/A-Statistics/0D/Table_A1_RCE_small295.csv" class="block">Table_A1_RCE_small295.csv</a></td>
+                <td class="hidden-xs">10/21/2020 3:27 a.m.</td>
+	            <td class="hidden-xs" id="bytes-1">4.4 KB</td>
+                <td></td>
+            </tr>
+
+        
+            <tr>
+                <td class="hidden-xs"><i class="glyphicon glyphicon-file"></i></td>
+                <td><a href="https://swift.dkrz.de/v1/dkrz_70a517a8-039d-4a1b-a30d-841923f8bc7a/RCEMIP/A-Statistics/0D/Table_A1_RCE_small300.csv" class="block">Table_A1_RCE_small300.csv</a></td>
+                <td class="hidden-xs">10/21/2020 3:27 a.m.</td>
+	            <td class="hidden-xs" id="bytes-2">4.4 KB</td>
+                <td></td>
+            </tr>
+
+        
+            <tr>
+                <td class="hidden-xs"><i class="glyphicon glyphicon-file"></i></td>
+                <td><a href="https://swift.dkrz.de/v1/dkrz_70a517a8-039d-4a1b-a30d-841923f8bc7a/RCEMIP/A-Statistics/0D/Table_A1_RCE_small305.csv" class="block">Table_A1_RCE_small305.csv</a></td>
+                <td class="hidden-xs">10/21/2020 3:27 a.m.</td>
+	            <td class="hidden-xs" id="bytes-3">4.4 KB</td>
+                <td></td>
+            </tr>
+
+        
+            <tr>
+                <td class="hidden-xs"><i class="glyphicon glyphicon-file"></i></td>
+                <td><a href="https://swift.dkrz.de/v1/dkrz_70a517a8-039d-4a1b-a30d-841923f8bc7a/RCEMIP/A-Statistics/0D/Table_A2_RCE_large295.csv" class="block">Table_A2_RCE_large295.csv</a></td>
+                <td class="hidden-xs">10/21/2020 3:27 a.m.</td>
+	            <td class="hidden-xs" id="bytes-4">3.6 KB</td>
+                <td></td>
+            </tr>
+
+        
+            <tr>
+                <td class="hidden-xs"><i class="glyphicon glyphicon-file"></i></td>
+                <td><a href="https://swift.dkrz.de/v1/dkrz_70a517a8-039d-4a1b-a30d-841923f8bc7a/RCEMIP/A-Statistics/0D/Table_A2_RCE_large300.csv" class="block">Table_A2_RCE_large300.csv</a></td>
+                <td class="hidden-xs">10/21/2020 3:27 a.m.</td>
+	            <td class="hidden-xs" id="bytes-5">3.6 KB</td>
+                <td></td>
+            </tr>
+
+        
+            <tr>
+                <td class="hidden-xs"><i class="glyphicon glyphicon-file"></i></td>
+                <td><a href="https://swift.dkrz.de/v1/dkrz_70a517a8-039d-4a1b-a30d-841923f8bc7a/RCEMIP/A-Statistics/0D/Table_A2_RCE_large305.csv" class="block">Table_A2_RCE_large305.csv</a></td>
+                <td class="hidden-xs">10/24/2020 5:26 a.m.</td>
+	            <td class="hidden-xs" id="bytes-6">3.6 KB</td>
+                <td></td>
+            </tr>
+
+        
+            <tr>
+                <td class="hidden-xs"><i class="glyphicon glyphicon-file"></i></td>
+                <td><a href="https://swift.dkrz.de/v1/dkrz_70a517a8-039d-4a1b-a30d-841923f8bc7a/RCEMIP/A-Statistics/0D/Table_A3_RCE_large295-RCE_small295.csv" class="block">Table_A3_RCE_large295-RCE_small295.csv</a></td>
+                <td class="hidden-xs">10/21/2020 3:27 a.m.</td>
+	            <td class="hidden-xs" id="bytes-7">2.4 KB</td>
+                <td></td>
+            </tr>
+
+        
+            <tr>
+                <td class="hidden-xs"><i class="glyphicon glyphicon-file"></i></td>
+                <td><a href="https://swift.dkrz.de/v1/dkrz_70a517a8-039d-4a1b-a30d-841923f8bc7a/RCEMIP/A-Statistics/0D/Table_A3_RCE_large300-RCE_small300.csv" class="block">Table_A3_RCE_large300-RCE_small300.csv</a></td>
+                <td class="hidden-xs">10/21/2020 3:27 a.m.</td>
+	            <td class="hidden-xs" id="bytes-8">2.4 KB</td>
+                <td></td>
+            </tr>
+
+        
+            <tr>
+                <td class="hidden-xs"><i class="glyphicon glyphicon-file"></i></td>
+                <td><a href="https://swift.dkrz.de/v1/dkrz_70a517a8-039d-4a1b-a30d-841923f8bc7a/RCEMIP/A-Statistics/0D/Table_A3_RCE_large305-RCE_small305.csv" class="block">Table_A3_RCE_large305-RCE_small305.csv</a></td>
+                <td class="hidden-xs">10/21/2020 3:27 a.m.</td>
+	            <td class="hidden-xs" id="bytes-9">2.4 KB</td>
+                <td></td>
+            </tr>
+
+        
+        </tbody> 
+        
+        <tfoot><tr><td colspan="5"></td></tr></tfoot>
+    </table>
+</div>
+
+        
+        <script src="/static/jquery.min.js"></script>
+        <script src="/static/bootstrap/js/bootstrap.min.js"></script>
+        
+
+    <script type="text/javascript">
+    function filesizeformat(size)
+{
+    var KB = 1024;
+    var MB = KB * 1024;
+    var GB = MB * 1024;
+    var TB = GB * 1024;
+    var PB = TB * 1024;
+
+    if(size < KB)
+    {
+        size /= 1;
+        if(size - parseInt(size.toString()) != 0)
+            size = size.toFixed(1);
+        else
+            size = size.toFixed(0);
+        return size.toString() + " Bytes";
+    }
+    else if(size < MB)
+    {
+        size /= KB;
+        if(size - parseInt(size.toString()) != 0)
+            size = size.toFixed(1);
+        else
+            size = size.toFixed(0);
+        return size.toString() + " KB";
+    }
+    else if(size < GB)
+    {
+        size /= MB;
+        if(size - parseInt(size.toString()) != 0)
+            size = size.toFixed(1);
+        else
+            size = size.toFixed(0);
+        return size.toString() + " MB";
+    }
+    else if(size < TB)
+    {
+        size /= GB;
+        if(size - parseInt(size.toString()) != 0)
+            size = size.toFixed(1);
+        else
+            size = size.toFixed(0);
+        return size.toString() + " GB";
+    }
+    else if(size < PB)
+    {
+        size /= TB;
+        if(size - parseInt(size.toString()) != 0)
+            size = size.toFixed(1);
+        else
+            size = size.toFixed(0);
+        return size.toString() + " TB";
+    }
+    else
+    {
+        size /= PB;
+        if(size - parseInt(size.toString()) != 0)
+            size = size.toFixed(1);
+        else
+            size = size.toFixed(0);
+        return size.toString() + " PB";
+    }
+}
+
+function datarateformat(datarate)
+{
+    var KiB = 1024;
+    var MiB = KiB * 1024;
+    var GiB = MiB * 1024;
+
+    if(datarate < KiB)
+    {
+        return datarate.toFixed(0).toString() + " B / s";
+    }
+    else if(datarate < MiB)
+    {
+        datarate /= KiB;
+        return datarate.toFixed(0).toString() + " KiB / s";
+    }
+    else if(datarate < GiB)
+    {
+        datarate /= MiB;
+        return datarate.toFixed(0).toString() + " MiB / s";
+    }
+    else
+    {
+        datarate /= GiB;
+        return datarate.toFixed(0).toString() + " GiB / s";
+    }
+}
+
+var entityMap = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;',
+    '/': '&#x2F;',
+    '`': '&#x60;',
+    '=': '&#x3D;'
+};
+
+function escapeHtml (string) {
+    return String(string).replace(/[&<>"'`=\/]/g, function fromEntityMap (s) {
+      return entityMap[s];
+    });
+}
+    var possibly_manifests = [];
+
+	for(var i=0; i < possibly_manifests.length; i++)
+	{
+		(function(i){
+		    var objectindex = possibly_manifests[i][0];
+		    var objectname =  possibly_manifests[i][1];
+
+		    $.ajax({
+                 url: "https://swift.dkrz.de/v1/dkrz_70a517a8-039d-4a1b-a30d-841923f8bc7a/RCEMIP/" + objectname,
+                 success : function(data, status, xhr){
+                    $('#bytes-' + objectindex).html(filesizeformat(parseInt(xhr.getResponseHeader("content-length"))));
+                 },
+                 error: function(){
+                     $('#bytes-' + objectindex).html("?");
+                 },
+                method: 'HEAD'
+		    });
+		})(i);
+	}
+    </script>
+
+    </body>
+</html>

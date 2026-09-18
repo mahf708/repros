@@ -3,7 +3,8 @@ We additionally provide a Zenodo archival repository with the following:
 (1) the E3SM code (hbc2 development branch) used for the runs;
 (2) the code to reproduce the analysis and plots in the manuscript;
 (3) instructions to reproduce the runs in the manuscript;
-(4) instructions to retrieve the data files from runs.
+(4) instructions to retrieve the data files from runs;
+(5) the post-processed data used to make the plots in (2).
 
 The following subfolders correspond to the items above, in order:
 
@@ -11,3 +12,4 @@ The following subfolders correspond to the items above, in order:
 02_plots
 03_runs
 04_archive
+05_data
